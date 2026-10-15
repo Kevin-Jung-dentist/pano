@@ -1,5 +1,7 @@
 # Pano · 공동 라벨링
 
+**웹사이트: https://pano-9kh.pages.dev** · Cloudflare Pages에서 GitHub `main` 변경 시 자동 배포됩니다.
+
 작업 ZIP을 브라우저에서 열고 AI 병소 박스를 사람이 교정하는 도구입니다.
 영상·라벨·모델을 웹 서버로 전송하지 않습니다. 모델 실행과 재학습은 기존 Pano 데스크톱에서 합니다.
 
@@ -50,7 +52,7 @@ Ctrl+Shift+Z 다시 실행, Ctrl+S 결과 내보내기. 휠 확대, Space+드래
 CLI:
 
 ~~~powershell
-F:\pano\pano.ps1 collab-create --actor "친구" --count 50 --source hanoi --split train --url "https://실제배포주소"
+F:\pano\pano.ps1 collab-create --actor "친구" --count 50 --source hanoi --split train --url "https://pano-9kh.pages.dev"
 F:\pano\pano.ps1 collab-list
 F:\pano\pano.ps1 collab-import F:\pano\collaboration\받은결과.pano-result.json
 ~~~
