@@ -148,6 +148,7 @@ canvas.addEventListener("pointerup",catchError(()=>{
   mutate("add_box",im=>{im.boxes.push({id,category,geometry:P.geometry[category],bbox:[Math.min(a[0],b[0]),Math.min(a[1],b[1]),Math.max(a[0],b[0]),Math.max(a[1],b[1])],status:"editing",source:"user",locked:false});im.review[P.roles[category]]=false;im.needs_review=false;selected=id;});
  }else{
   const b=current().boxes.find(b=>b.id===d.id);
+  if(!P.boxOK(b,current())){work.images[index]=d.before;draw();throw Error("유효한 크기의 박스를 그려주세요.");}
   if(JSON.stringify(b.bbox)!==JSON.stringify(d.original)){b.status="editing";current().review[P.roles[b.category]]=false;current().needs_review=false;record("resize_or_move",d.before);}else draw();
  }
 }));
@@ -186,9 +187,9 @@ $("finish").onclick=catchError(async()=>{mutate("complete_all",im=>P.complete(im
 $("flag").onclick=catchError(()=>mutate("needs_review",im=>{im.needs_review=true;for(const r of Object.keys(im.review))im.review[r]=false;}));
 document.addEventListener("keydown",e=>{
  if(/INPUT|SELECT|TEXTAREA/.test(e.target.tagName))return;if(!work)return;
- if(e.code==="Space"){e.preventDefault();space=true;}if(e.key.toLowerCase()==="b")setMode("draw");if(e.key.toLowerCase()==="v")setMode("select");
+ if(e.code==="Space"&&e.target.tagName!=="BUTTON"){e.preventDefault();space=true;}if(e.key.toLowerCase()==="b")setMode("draw");if(e.key.toLowerCase()==="v")setMode("select");
  if(e.key.toLowerCase()==="h")$("hide").click();
- if(e.key==="Enter"&&!e.ctrlKey)$("confirm").click();if(e.key==="Delete")$("exclude").click();
+ if(e.key==="Enter"&&!e.ctrlKey&&e.target.tagName!=="BUTTON"){e.preventDefault();$("confirm").click();}if(e.key==="Delete")$("exclude").click();
  if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==="z"){e.preventDefault();travel(!e.shiftKey);}
  if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==="s"){e.preventDefault();exportResult();}
  if(e.key==="Escape"&&drag){if(drag.before)work.images[index]=drag.before;drag=null;renderLists();draw();}
