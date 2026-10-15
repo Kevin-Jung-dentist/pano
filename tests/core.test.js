@@ -9,7 +9,6 @@ test('class semantics not silently changed',()=>assert.throws(()=>P.edit(im(),'c
 test('CRC32 known vector',()=>assert.equal(Z.crc32(Buffer.from('123456789')),0xcbf43926));
 test('malformed ZIP rejected',async()=>await assert.rejects(()=>Z.open(new Blob(['bad']))));
 test('actual Python-generated package can be read lazily',async()=>{
- if(!process.env.PANO_TEST_ZIP)return;
- const fs=require('node:fs'),z=await Z.open(new Blob([fs.readFileSync(process.env.PANO_TEST_ZIP)])),m=P.validate(await z.json('labels.json'));
+ const fs=require('node:fs'),z=await Z.open(new Blob([process.env.PANO_TEST_ZIP?fs.readFileSync(process.env.PANO_TEST_ZIP):Buffer.from(require('./fixture'),'base64')])),m=P.validate(await z.json('labels.json'));
  assert(m.images.length);assert((await z.bytes(m.images[0].file)).length>0);
 });
