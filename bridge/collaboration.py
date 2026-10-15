@@ -112,14 +112,18 @@ def create_package(st,actor,count=50,source="hanoi",split="train",predict=True,e
     try:
         options=[]
         if predict:
-            from .targeted_prediction import automatic_options,_targeted_predict
+            from .targeted_prediction import automatic_options,_targeted_predict,_manifests
             from .locking import gpu_operation
             options=automatic_options()
+            manifests=_manifests()
+            for option in options:
+                option["inference_settings"]={role:{key:manifests[mid].get(key) for key in ("size","confidence_threshold","confidence_by_class","nms_iou_threshold")} for role,mid in option["model_ids"].items()}
             if set(o["category"] for o in options)!=set(ROLE):raise ValueError("네 가지 병소의 활성 모델을 먼저 준비하세요.")
             @gpu_operation
             def infer_all():
                 with permit(pid):
                     for iid in selected:
+                        if st.db.execute("SELECT state FROM collaboration_packages WHERE id=?",(pid,)).fetchone()[0]!="preparing":raise ValueError("배정이 취소되었습니다.")
                         cache={}
                         for o in sorted(options,key=lambda x:x["destination"]=="caries"):
                             _targeted_predict(iid,o["id"],inference_cache=cache)
@@ -138,13 +142,14 @@ def create_package(st,actor,count=50,source="hanoi",split="train",predict=True,e
         with zipfile.ZipFile(tmp) as z:
             if z.testzip():raise ValueError("ZIP integrity failed")
         os.replace(tmp,out)
+        if st.db.execute("SELECT state FROM collaboration_packages WHERE id=?",(pid,)).fetchone()[0]!="preparing":raise ValueError("배정이 취소되었습니다.")
         for im in manifest["images"]:
             if digest(raw_state(st,im["id"]))!=im["base"]:raise ValueError("ZIP 생성 중 원본 수정 감지. 다시 배정하세요.")
         with st.db:st.db.execute("UPDATE collaboration_packages SET state='exported',record=? WHERE id=?",(encode(manifest),pid))
         return {"package_id":pid,"path":str(out),"images":len(selected),"actor":actor,"size_mb":round(out.stat().st_size/1e6,1)}
     except Exception:
         with st.db:
-            st.db.execute("UPDATE collaboration_packages SET state='failed' WHERE id=?",(pid,))
+            st.db.execute("UPDATE collaboration_packages SET state='failed' WHERE id=? AND state='preparing'",(pid,))
             st.db.execute("DELETE FROM collaboration_locks WHERE package_id=?",(pid,))
         raise
 def validate_result(manifest,result):
@@ -204,6 +209,14 @@ def import_result(st,path):
             lock=st.db.execute("SELECT package_id FROM collaboration_locks WHERE image_id=?",(iid,)).fetchone()
             if not lock or lock[0]!=pid or digest(raw_state(st,iid))!=base["base"]:
                 conflicts.append(iid);continue
+            changed_scopes={ROLE[b["category"]] for b in returned["boxes"] if b["id"] not in old or any(b[k]!=old[b["id"]][k] for k in ("bbox","status"))}
+            explicit=set()
+            for event in returned.get("history",[]):
+                if not isinstance(event,dict):continue
+                action=event.get("action")
+                if action=="complete_all":explicit.update(("caries","findings","hanoi"))
+                elif action in ("complete_caries","complete_findings","complete_hanoi"):explicit.add(action[9:])
+            human_scopes=changed_scopes|explicit|{r for r in returned["review"] if returned["review"][r]!=base["review"][r]}
             stamp=now();im=st.image(iid);aa=st.annotations(iid);cr=CariesData.__new__(CariesData);cr.st=st;cr.owns=False
             record=cr.load(iid);cby={b["id"]:deepcopy(b) for b in record["boxes"]};caries_changed=False
             for b in returned["boxes"]:
@@ -239,13 +252,13 @@ def import_result(st,path):
             reviews=meta.setdefault("finding_reviews",{});aa=st.annotations(iid)
             for role in ("findings","hanoi"):
                 if returned["review"][role] and not returned["needs_review"]:
-                    reviews[role]={"signature":signature(aa,role),"reviewed_at":stamp,"scope":role,"actor":manifest["actor"],
+                    reviews[role]={"signature":signature(aa,role),"reviewed_at":stamp,"scope":role,"actor":manifest["actor"] if role in human_scopes else "preserved_reference_coverage",
                                    "negative":not any(a["status"]!="excluded" for a in relevant(aa,role))}
                 else:reviews.pop(role,None)
             meta["collaboration_review"]={"actor":manifest["actor"],"package_id":pid,"needs_review":returned["needs_review"],"at":stamp}
             st.db.execute("UPDATE images SET fully_reviewed=0,metadata=? WHERE id=?",(encode(meta),iid))
             st.db.execute("INSERT INTO events(kind,record,created) VALUES(?,?,?)",("collaboration_return",encode({"image_id":iid,"actor":manifest["actor"],"package_id":pid,"history":returned.get("history",[]),"review":returned["review"]}),stamp))
-            for scope in ("caries","findings","hanoi"):
+            for scope in sorted(human_scopes):
                 action="review_complete" if returned["review"][scope] and not returned["needs_review"] else "edited"
                 st.db.execute("INSERT OR IGNORE INTO human_review_events VALUES(?,?,?,?,?,?,?)",
                     (rid+":"+iid+":"+scope,iid,scope,action,encode({"actor":manifest["actor"],"provenance":"collaboration_return","package_id":pid}),stamp,stamp))

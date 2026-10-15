@@ -56,7 +56,7 @@ F:\pano\pano.ps1 collab-import F:\pano\collaboration\받은결과.pano-result.js
 ~~~
 
 --without-predict는 기존 정답·초안만 보내거나 기능을 검증할 때 사용합니다.
-공개 저장소 **bridge/**는 기존 Pano 앱 연결 코드 사본입니다. 단독으로 AI 모델을 실행하는 패키지가 아닙니다.
+공개 저장소 **bridge/**는 기존 Pano 앱 연결 코드 사본입니다. 단독으로 AI 모델을 실행하는 패키지가 아닙니다. 기존 앱 연결 변경은 bridge/integration.patch에 기록되어 있습니다.
 영상·모델·실행 환경·실제 라벨은 공개 저장소에 포함하지 않습니다.
 
 ## 무료 기본 도메인으로 배포

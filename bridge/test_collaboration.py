@@ -75,6 +75,7 @@ def test_partial_review_not_negative_all_classes(st):
     assert coverage(st.image(iid),st.annotations(iid),"hanoi")[0]
     assert not coverage(st.image(iid),st.annotations(iid),"findings")[0]
     assert not CariesData(st).load(iid)["complete"]
+    assert [r[0] for r in st.db.execute("SELECT scope FROM human_review_events")]==["hanoi"]
 def test_test_split_stays_test(st):
     iid,aid,m,r=package(st,"test");import_result(st,write(r))
     assert st.image(iid)["split"]=="test"

@@ -1,0 +1,105 @@
+--- a/src/pano/store.py
++++ b/src/pano/store.py
+@@ -71,7 +71,12 @@
+     def images(self,source=None):
+         query="SELECT * FROM images"; args=[]
+         if source: query+=" WHERE source=?"; args=[source]
+-        return [{**dict(r),"metadata":json.loads(r["metadata"])} for r in self.db.execute(query+" ORDER BY created,id",args)]
++        result=[{**dict(r),"metadata":json.loads(r["metadata"])} for r in self.db.execute(query+" ORDER BY created,id",args)]
++        if self.db.execute("SELECT 1 FROM sqlite_master WHERE name='collaboration_locks'").fetchone():
++            assigned={r[0]:{"package_id":r[1],"actor":r[2]} for r in self.db.execute("SELECT image_id,package_id,actor FROM collaboration_locks")}
++            for im in result:
++                if im["id"] in assigned:im["assignment"]=assigned[im["id"]]
++        return result
+     def annotations(self,iid=None):
+         q="SELECT * FROM annotations"; args=[]
+         if iid:q+=" WHERE image_id=?";args=[iid]
+@@ -108,6 +113,8 @@
+         self.save(ann,mask,reason="import",initial=True)
+         return aid
+     def save(self,ann,mask=None,reason="edit",initial=False):
++        from .collaboration import assert_editable
++        assert_editable(self,ann["image_id"])
+         old=self.annotation(ann["id"])
+         if old and ann["revision"]!=old["revision"]:raise RuntimeError("Annotation changed elsewhere; reload before saving.")
+         a=dict(ann);a["revision"]=(old["revision"] if old else 0)+1;a["updated"]=now()
+@@ -139,6 +146,8 @@
+                 self.db.execute("UPDATE images SET fully_reviewed=0,metadata=? WHERE id=?",(json.dumps(meta),im["id"]))
+         return a
+     def set_full_review(self,iid,value=True,source_import=False):
++        from .collaboration import assert_editable
++        assert_editable(self,iid)
+         im=self.image(iid);meta=im["metadata"]
+         if source_import and (meta.get("source_label_conflict") or meta.get("review_dirty")):return
+         if value and not source_import:
+--- a/src/pano/caries.py
++++ b/src/pano/caries.py
+@@ -80,6 +80,8 @@
+         if record["stale"]:record["complete"]=False
+         return record
+     def save(self,record,reason="edit"):
++        from .collaboration import assert_editable
++        assert_editable(self.st,record["image_id"])
+         r=deepcopy(record);im=self.st.image(r["image_id"])
+         if not im:raise ValueError("Unknown image")
+         for b in r["boxes"]:
+--- a/src/pano/finding_data.py
++++ b/src/pano/finding_data.py
+@@ -41,6 +41,8 @@
+     return (a["status"]=="confirmed" or public_reference(a)) and usable(a,im)
+ 
+ def review(st,iid,role):
++    from .collaboration import assert_editable
++    assert_editable(st,iid)
+     im=st.image(iid);anns=st.annotations(iid);aa=relevant(anns,role)
+     if any(a["status"]!="excluded" and not admitted(a,im) for a in aa):
+         raise ValueError(TITLES[role]+" 후보를 모두 확정 또는 제외하세요.")
+--- a/src/pano/app.py
++++ b/src/pano/app.py
+@@ -64,6 +64,8 @@
+         self.prediction_panel=PredictionPanel(self);self.tabs.insertTab(2,self.prediction_panel,"AI 라벨 추가")
+         from .workflow_ui import WorkflowHome
+         self.workflow_page=WorkflowHome(self);self.tabs.insertTab(0,self.workflow_page,"시작 · 작업 안내")
++        from .collaboration_ui import CollaborationPanel
++        self.collaboration_panel=CollaborationPanel(self);self.tabs.addTab(self.collaboration_panel,"친구와 공동 라벨링")
+         self.statusBar().showMessage("F:\\pano · 편집은 획마다 저장 / 학습은 기본 15분마다 저장")
+         for key,fn in [("B",lambda:self.choose_tool("brush")),("E",lambda:self.choose_tool("eraser")),
+             ("P",lambda:self.choose_tool("polygon")),("[",lambda:self.brush.setValue(max(1,self.brush.value()-2))),
+--- a/src/pano/__main__.py
++++ b/src/pano/__main__.py
+@@ -25,8 +25,22 @@
+     a=sub.add_parser("predict");a.add_argument("image_id");a.add_argument("--annotation");a.add_argument("--model");a.add_argument("--caries-boxes",action="store_true");a.add_argument("--teeth",action="store_true",help="Add AI tooth box drafts; no automatic confirmation");a.add_argument("--strategy",choices=["auto","full","tooth","hybrid"],default="auto");a.add_argument("--allow-unvalidated",action="store_true")
+     xm=sub.add_parser("export-manifest");xm.add_argument("path",type=Path)
+     x=sub.add_parser("export");x.add_argument("path",type=Path)
++    cp=sub.add_parser("collab-create");cp.add_argument("--actor",required=True);cp.add_argument("--count",type=int,default=50);cp.add_argument("--source",default="hanoi");cp.add_argument("--split",default="train",choices=["train","val","test"]);cp.add_argument("--without-predict",action="store_true");cp.add_argument("--url",default="")
++    ci=sub.add_parser("collab-import");ci.add_argument("path",type=Path)
++    cc=sub.add_parser("collab-cancel");cc.add_argument("package_id")
++    sub.add_parser("collab-list")
+     args=p.parse_args();cmd=args.command;result=None
+-    if cmd=="app":
++    if cmd.startswith("collab-"):
++        from .store import Store
++        from .collaboration import create_package,import_result,cancel,list_packages
++        st=Store()
++        try:
++            if cmd=="collab-create":result=create_package(st,args.actor,args.count,args.source,args.split,not args.without_predict,args.url)
++            elif cmd=="collab-import":result=import_result(st,args.path)
++            elif cmd=="collab-cancel":cancel(st,args.package_id);result={"cancelled":args.package_id}
++            else:result=list_packages(st)
++        finally:st.close()
++    elif cmd=="app":
+         from .app import main as app_main
+         return app_main(open_caries=args.caries)
+     elif cmd=="compare-cascade":
+--- a/src/pano/review_ui.py
++++ b/src/pano/review_ui.py
+@@ -2,7 +2,8 @@
+ from .review_history import filename, natural_key
+ 
+ def image_name(im):
+-    return filename(im.get("metadata",{}).get("original")) or im["id"][:12]
++    name=filename(im.get("metadata",{}).get("original")) or im["id"][:12]
++    return ("[배정: "+im["assignment"]["actor"]+"] " if im.get("assignment") else "")+name
+ 
+ def image_order(im):
+     original=im.get("metadata",{}).get("original")

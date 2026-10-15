@@ -41,7 +41,7 @@ function restoreResult(r){
 async function openFile(file){
  if(!file)return;
  if(exportDirty&&!confirm("현재 수정 결과를 내보냈나요? 다른 작업을 열어도 자동 저장본은 남지만, 결과 파일 백업을 권합니다."))return;
- message("");$("save-status").textContent="ZIP 확인 중…";
+ await saveQueue;message("");$("save-status").textContent="ZIP 확인 중…";
  const nextZip=await PanoZip.open(file),next=P.validate(await nextZip.json("labels.json"));
  for(const im of next.images)if(!nextZip.entries.has(im.file))throw Error("영상 파일이 빠진 ZIP입니다.");
  let cached=null;try{cached=await cacheGet(next.package_id);}catch(e){message("브라우저 자동 저장을 사용할 수 없습니다. 결과를 자주 내보내 주세요.");}
