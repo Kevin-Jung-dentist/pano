@@ -24,6 +24,7 @@ function record(action,before){
 }
 function mutate(action,fn){if(!work)return;const before=P.clone(current());try{fn(current());record(action,before);}catch(e){work.images[index]=before;throw e;}}
 function restoreResult(r){
+ if(r.coordinate_system&&!P.sameCoordinates(r.coordinate_system))throw Error("결과 좌표계가 다릅니다.");
  if(r.format!=="pano-result"||r.version!==1||r.package_id!==work.package_id||r.token!==work.token)throw Error("현재 작업의 결과 파일이 아닙니다.");
  const seen=new Set(),updates=[];
  for(const x of r.images){
@@ -103,10 +104,10 @@ function renderLists(){
  $("flag").textContent=im.needs_review?"추가 검토 요청됨 ✓":"판단이 어려워요 · 추가 검토 요청";
 }
 async function navigate(i){if(!work||i<0||i>=work.images.length)return;index=i;await loadImage();}
-function resize(){const r=$("viewport").getBoundingClientRect();if(r.width<1||r.height<1)return;canvas.width=Math.round(r.width*devicePixelRatio);canvas.height=Math.round(r.height*devicePixelRatio);if(picture)fit();else draw();}
+function resize(){if(drag?.before)work.images[index]=drag.before;drag=null;const r=$("viewport").getBoundingClientRect();if(r.width<1||r.height<1)return;canvas.width=Math.round(r.width*devicePixelRatio);canvas.height=Math.round(r.height*devicePixelRatio);if(picture)fit();else draw();}
 function fit(){if(!picture)return;const r=canvas.getBoundingClientRect();scale=Math.min((r.width-40)/picture.width,(r.height-55)/picture.height);tx=(r.width-picture.width*scale)/2;ty=(r.height-picture.height*scale)/2;draw();}
 function draw(){
- const r=canvas.getBoundingClientRect();ctx.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0);ctx.clearRect(0,0,r.width,r.height);if(!picture)return;
+ const r=canvas.getBoundingClientRect();ctx.setTransform(canvas.width/r.width,0,0,canvas.height/r.height,0,0);ctx.clearRect(0,0,r.width,r.height);if(!picture)return;
  ctx.save();ctx.translate(tx,ty);ctx.scale(scale,scale);ctx.drawImage(picture,0,0);
  if(!hidden){for(const b of current().boxes){if(b.status==="excluded")continue;const [x,y,x2,y2]=b.bbox;const color=P.colors[b.category];ctx.strokeStyle=color;ctx.lineWidth=(b.id===selected?2.5:1.5)/scale;ctx.fillStyle=color+"18";ctx.fillRect(x,y,x2-x,y2-y);ctx.setLineDash(b.status==="draft"?[5/scale,4/scale]:[]);ctx.strokeRect(x,y,x2-x,y2-y);ctx.setLineDash([]);
  ctx.font=11/scale+"px sans-serif";const title=P.labels[b.category]+(b.status==="confirmed"?" ✓":"");const w=ctx.measureText(title).width+10/scale;ctx.fillStyle=color;ctx.fillRect(x,Math.max(0,y-19/scale),w,18/scale);ctx.fillStyle="#111e25";ctx.fillText(title,x+5/scale,Math.max(12/scale,y-6/scale));
@@ -115,7 +116,7 @@ function draw(){
  if(drag?.type==="new"){const [x,y]=drag.start,[a,b]=drag.end;ctx.strokeStyle=P.colors[$("category").value];ctx.lineWidth=2/scale;ctx.setLineDash([4/scale,3/scale]);ctx.strokeRect(x,y,a-x,b-y);}
  ctx.restore();
 }
-function point(e){const r=canvas.getBoundingClientRect();return [(e.clientX-r.left-tx)/scale,(e.clientY-r.top-ty)/scale];}
+function point(e){const r=canvas.getBoundingClientRect();return P.toImage(e.clientX,e.clientY,{left:r.left,top:r.top,tx,ty,scale});}
 function clampPoint(p){const im=current();return [Math.max(0,Math.min(im.width,p[0])),Math.max(0,Math.min(im.height,p[1]))];}
 canvas.addEventListener("pointerdown",e=>{
  if(!picture)return;canvas.focus();canvas.setPointerCapture(e.pointerId);const p=clampPoint(point(e));message("");
@@ -195,7 +196,7 @@ document.addEventListener("keydown",e=>{
  if(e.key==="Escape"&&drag){if(drag.before)work.images[index]=drag.before;drag=null;renderLists();draw();}
 });
 document.addEventListener("keyup",e=>{if(e.code==="Space")space=false;});
-window.addEventListener("blur",()=>{space=false;if(drag?.before){work.images[index]=drag.before;drag=null;draw();}});
+window.addEventListener("blur",()=>{space=false;if(drag?.before)work.images[index]=drag.before;drag=null;draw();});
 window.addEventListener("beforeunload",e=>{if(exportDirty){e.preventDefault();e.returnValue="";}});
 new ResizeObserver(resize).observe($("viewport"));
 $("demo").onclick=catchError(async()=>{

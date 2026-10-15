@@ -107,3 +107,68 @@ def test_merge_transaction_rollback(st):
     with pytest.raises(Exception):import_result(st,write(r))
     assert st.annotation(aid)["revision"]==1
     assert st.db.execute("SELECT package_id FROM collaboration_locks WHERE image_id=?",(iid,)).fetchone()[0]==m["package_id"]
+
+def test_partial_handoff_preserves_work_and_rejects_late_overwrite(st):
+    a,b=film(st),film(st)
+    aa=st.add_annotation(a,"periapical_lesion","prediction",bbox=[10,10,30,30],geometry="lesion_box",quality="predicted",status="draft")
+    bb=st.add_annotation(b,"periapical_lesion","prediction",bbox=[10,10,30,30],geometry="lesion_box",quality="predicted",status="draft")
+    made=create_package(st,"friend",2,predict=False)
+    with zipfile.ZipFile(made["path"]) as z:m=json.loads(z.read("labels.json"))
+    r={"format":"pano-result","version":1,"package_id":m["package_id"],"token":m["token"],"images":deepcopy(m["images"])}
+    first=next(x for x in r["images"] if x["id"]==a)
+    first["boxes"][0].update(bbox=[10.125,10.75,29.625,31.875],status="confirmed")
+    first["review"]={"caries":False,"findings":False,"hanoi":True}
+    report=import_result(st,write(r));assert report["accepted"]==[a]
+    progress=package_progress(st,m["package_id"]);assert (progress["partial"],progress["waiting"],progress["complete"])==(1,1,0)
+    reclaimed=reclaim_unfinished(st,m["package_id"]);assert set(reclaimed["reclaimed"])=={a,b}
+    assert st.annotation(aa)["bbox"]==[10.125,10.75,29.625,31.875]
+    assert not st.image(b).get("assignment")
+    changed=deepcopy(r);first=next(x for x in changed["images"] if x["id"]==a);first["boxes"][0]["bbox"]=[1,1,25,25]
+    assert a in import_result(st,write(changed))["conflicts"]
+    assert st.annotation(aa)["bbox"]==[10.125,10.75,29.625,31.875]
+    mine=create_package(st,"myself",2,predict=False,image_ids=[a,b],owner_kind="self")
+    with zipfile.ZipFile(mine["path"]) as z:mine=json.loads(z.read("labels.json"))
+    assert next(x for x in mine["images"] if x["id"]==a)["boxes"][0]["bbox"]==[10.125,10.75,29.625,31.875]
+    assert mine["coordinate_system"]==COORDINATE_SYSTEM
+
+def test_completed_return_not_reclaimed(st):
+    iid,aid,m,r=package(st);import_result(st,write(r))
+    assert package_progress(st,m["package_id"])["complete"]==1
+    assert reclaim_unfinished(st,m["package_id"])["reclaimed"]==[]
+
+def test_image_lookup_contains_lock_and_badge(st):
+    from pano.review_ui import image_name
+    iid,aid,m,r=package(st)
+    assert st.image(iid)["assignment"]["actor"]=="Friend"
+    assert "수정 잠김" in image_name(st.image(iid))
+    reclaim_unfinished(st,m["package_id"])
+    assert "내가 이어하기" in image_name(st.image(iid))
+
+def test_stale_sync_retains_human_box_and_adds_new_reference(st):
+    iid=film(st);data=CariesData(st);r=data.load(iid)
+    r["boxes"]=[{"id":"human","bbox":[2.125,3.25,10.75,13.875],"status":"confirmed","human_modified":True,"origin_source":"user"}]
+    data.save(r)
+    st.add_annotation(iid,"caries","dc1000",bbox=[40,20,55,35],geometry="lesion_box",quality="box",status="confirmed")
+    assert data.load(iid)["stale"]
+    made=create_package(st,"friend",1,predict=False)
+    with zipfile.ZipFile(made["path"]) as z:m=json.loads(z.read("labels.json"))
+    r=data.load(iid);assert not r["stale"] and not r["complete"]
+    assert next(b for b in r["boxes"] if b["id"]=="human")["bbox"]==[2.125,3.25,10.75,13.875]
+    assert len(r["boxes"])==2
+
+def test_result_coordinate_system_must_match(st):
+    iid,aid,m,r=package(st)
+    r["coordinate_system"]={**COORDINATE_SYSTEM,"units":"normalized"}
+    with pytest.raises(ValueError,match="좌표계"):import_result(st,write(r))
+
+def test_fractional_round_trip_from_shared_js(st):
+    import subprocess
+    iid,aid,m,r=package(st)
+    m["images"][0]["boxes"][0].update(bbox=[10.125,10.75,29.625,31.875],status="confirmed")
+    m["images"][0]["review"]={k:True for k in ("caries","findings","hanoi")}
+    core=str(Path(__file__).resolve().parents[1]/"collab-web/dist/core.js")
+    script="const P=require(process.argv[1]);let s='';process.stdin.on('data',x=>s+=x);process.stdin.on('end',()=>process.stdout.write(JSON.stringify(P.result(P.validate(JSON.parse(s))))));"
+    result=subprocess.run(["node","-e",script,core],input=json.dumps(m),text=True,capture_output=True,check=True)
+    returned=json.loads(result.stdout)
+    assert import_result(st,write(returned))["accepted"]==[iid]
+    assert st.annotation(aid)["bbox"]==[10.125,10.75,29.625,31.875]

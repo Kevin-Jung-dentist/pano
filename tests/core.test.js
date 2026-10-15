@@ -12,3 +12,29 @@ test('actual Python-generated package can be read lazily',async()=>{
  const fs=require('node:fs'),z=await Z.open(new Blob([process.env.PANO_TEST_ZIP?fs.readFileSync(process.env.PANO_TEST_ZIP):Buffer.from(require('./fixture'),'base64')])),m=P.validate(await z.json('labels.json'));
  assert(m.images.length);assert((await z.bytes(m.images[0].file)).length>0);
 });
+
+test('original pixel coordinates survive zoom, pan, offsets and display DPR',()=>{
+ for(const dpr of [1,1.25,1.5,2,3]){
+  for(const scale of [.03,.19,.333,1,1.75,4.1,10]){
+   const t={left:37.125,top:91.75,tx:-473.45,ty:21.875,scale};
+   for(const point of [[0,0],[.125,.625],[2047.875,1023.25],[3200,1800]]){
+    const css=P.toScreen(...point,t),back=P.toImage(...css,t);
+    assert(Math.abs(back[0]-point[0])<1e-9);
+    assert(Math.abs(back[1]-point[1])<1e-9);
+    // Raster dimensions may round, while CSS pointer coordinates stay independent.
+    const width=917.3,pixels=Math.round(width*dpr);
+    assert(Math.abs((css[0]*pixels/width)/(pixels/width)-css[0])<1e-9);
+   }
+  }
+ }
+});
+test('export never rounds or normalizes fractional coordinates',()=>{
+ const x=im();x.boxes[0].bbox=[10.125,10.75,29.625,31.875];
+ const m={format:'pano-work',version:1,package_id:'same',token:'same',actor:'same',images:[x]};
+ const out=P.result(m);assert.deepEqual(out.images[0].boxes[0].bbox,x.boxes[0].bbox);
+ assert.deepEqual(out.coordinate_system,P.coordinateSystem);
+});
+test('wrong coordinate space is rejected at package load',()=>{
+ const m={format:'pano-work',version:1,package_id:'x',token:'t',images:[im()],coordinate_system:{...P.coordinateSystem,units:'normalized'}};
+ assert.throws(()=>P.validate(m));
+});

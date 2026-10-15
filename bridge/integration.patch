@@ -1,6 +1,16 @@
 --- a/src/pano/store.py
 +++ b/src/pano/store.py
-@@ -71,7 +71,12 @@
+@@ -67,11 +67,21 @@
+             self.db.commit(); return iid
+     def image(self,iid):
+         r=self.db.execute("SELECT * FROM images WHERE id=?",(iid,)).fetchone()
+-        return {**dict(r),"metadata":json.loads(r["metadata"])} if r else None
++        if not r:return None
++        image={**dict(r),"metadata":json.loads(r["metadata"])}
++        if self.db.execute("SELECT 1 FROM sqlite_master WHERE name='collaboration_locks'").fetchone():
++            lock=self.db.execute("SELECT package_id,actor FROM collaboration_locks WHERE image_id=?",(iid,)).fetchone()
++            if lock:image["assignment"]={"package_id":lock[0],"actor":lock[1]}
++        return image
      def images(self,source=None):
          query="SELECT * FROM images"; args=[]
          if source: query+=" WHERE source=?"; args=[source]
@@ -14,7 +24,7 @@
      def annotations(self,iid=None):
          q="SELECT * FROM annotations"; args=[]
          if iid:q+=" WHERE image_id=?";args=[iid]
-@@ -108,6 +113,8 @@
+@@ -108,6 +118,8 @@
          self.save(ann,mask,reason="import",initial=True)
          return aid
      def save(self,ann,mask=None,reason="edit",initial=False):
@@ -23,7 +33,7 @@
          old=self.annotation(ann["id"])
          if old and ann["revision"]!=old["revision"]:raise RuntimeError("Annotation changed elsewhere; reload before saving.")
          a=dict(ann);a["revision"]=(old["revision"] if old else 0)+1;a["updated"]=now()
-@@ -139,6 +146,8 @@
+@@ -139,6 +151,8 @@
                  self.db.execute("UPDATE images SET fully_reviewed=0,metadata=? WHERE id=?",(json.dumps(meta),im["id"]))
          return a
      def set_full_review(self,iid,value=True,source_import=False):
@@ -65,6 +75,14 @@
          self.statusBar().showMessage("F:\\pano · 편집은 획마다 저장 / 학습은 기본 15분마다 저장")
          for key,fn in [("B",lambda:self.choose_tool("brush")),("E",lambda:self.choose_tool("eraser")),
              ("P",lambda:self.choose_tool("polygon")),("[",lambda:self.brush.setValue(max(1,self.brush.value()-2))),
+@@ -291,6 +293,7 @@
+             QMessageBox.warning(self,"미저장 수정","저장 오류를 해결하고 Ctrl+S로 다시 저장하세요.")
+             self.refresh_images();return
+         self.iid=item.data(Qt.UserRole);im=self.st.image(self.iid)
++        self.canvas.readonly=bool(im.get("assignment"))
+         from .modalities import modality
+         self.modality_choice.setCurrentIndex(self.modality_choice.findData(modality(im)))
+         self.img=np.array(Image.open(ROOT/im["path"]).convert("RGB"))
 --- a/src/pano/__main__.py
 +++ b/src/pano/__main__.py
 @@ -25,8 +25,22 @@
@@ -93,13 +111,113 @@
      elif cmd=="compare-cascade":
 --- a/src/pano/review_ui.py
 +++ b/src/pano/review_ui.py
-@@ -2,7 +2,8 @@
+@@ -2,7 +2,13 @@
  from .review_history import filename, natural_key
  
  def image_name(im):
 -    return filename(im.get("metadata",{}).get("original")) or im["id"][:12]
 +    name=filename(im.get("metadata",{}).get("original")) or im["id"][:12]
-+    return ("[배정: "+im["assignment"]["actor"]+"] " if im.get("assignment") else "")+name
++    if im.get("assignment"):return "[배정·수정 잠김: "+im["assignment"]["actor"]+"] "+name
++    meta=im.get("metadata",{})
++    if meta.get("collaboration_handoff",{}).get("state")=="reclaimed":return "[회수·내가 이어하기] "+name
++    reviewed=meta.get("collaboration_review",{})
++    if reviewed:return ("[반환·검토 완료] " if reviewed.get("complete") else "[반환·미완료 이어하기] ")+name
++    return name
  
  def image_order(im):
      original=im.get("metadata",{}).get("original")
+--- a/src/pano/caries_ui.py
++++ b/src/pano/caries_ui.py
+@@ -22,8 +22,8 @@
+         self.preview=None;self.drag=None;self.viewport().update()
+     def mousePressEvent(self,event):
+         if event.button()==Qt.MiddleButton or (self.space and event.button()==Qt.LeftButton):return super().mousePressEvent(event)
+-        if event.button()!=Qt.LeftButton or self.image is None or not self.boxes_visible:return
+-        self.setFocus();p=self.mapToScene(event.position().toPoint());x,y=p.x(),p.y();h,w=self.image.shape[:2]
++        if self.readonly or event.button()!=Qt.LeftButton or self.image is None or not self.boxes_visible:return
++        self.setFocus();p=self.viewportTransform().inverted()[0].map(event.position());x,y=p.x(),p.y();h,w=self.image.shape[:2]
+         if not (0<=x<=w and 0<=y<=h):return
+         tolerance=9/max(.01,self.transform().m11());target=None;corner=None
+         ordered=sorted(self.entries,key=lambda b:b["id"]==self.selected,reverse=True)
+@@ -43,7 +43,7 @@
+     def mouseMoveEvent(self,event):
+         if self.panning:return super().mouseMoveEvent(event)
+         if self.drag:
+-            p=self.mapToScene(event.position().toPoint());h,w=self.image.shape[:2]
++            p=self.viewportTransform().inverted()[0].map(event.position());h,w=self.image.shape[:2]
+             x=float(np.clip(p.x(),0,w));y=float(np.clip(p.y(),0,h));b=list(self.drag["original"]);corner=self.drag["corner"]
+             if corner is None:
+                 dx=np.clip(x-self.drag["start"][0],-b[0],w-b[2]);dy=np.clip(y-self.drag["start"][1],-b[1],h-b[3])
+@@ -89,6 +89,7 @@
+         for title,fn in (("영상 추가",self.host.add_images),("기존 윤곽 → 박스",self.sync_original),("AI 충치 박스 예측",self.predict),("새 박스  N",self.new_box),("실행 취소",self.undo),("다시 실행",self.redo)):
+             b=QPushButton(title);b.clicked.connect(fn);bar.addWidget(b)
+         self.train_button=QPushButton("교정본으로 충치 탐지 재학습");self.train_button.clicked.connect(self.retrain);bar.addWidget(self.train_button)
++        shared=QPushButton("친구와 같은 박스 편집기");shared.clicked.connect(lambda:self.host.collaboration_panel.prepare_self([self.iid]) if self.iid else None);bar.addWidget(shared)
+         outer.addLayout(bar)
+         options=QHBoxLayout();options.addWidget(QLabel("발견 방식"));self.discovery=QComboBox()
+         for title,value in (("검증된 기본 방식","auto"),("치아 먼저 → 충치","tooth"),("치아 + 전체 영상 보완","hybrid"),("기존 전체 영상","full")):self.discovery.addItem(title,value)
+@@ -178,7 +179,7 @@
+         self.canvas.set_content(pixels,fit=True);self.render()
+     def render(self):
+         if self.record is None:return
+-        r=self.record;im=self.host.st.image(self.iid);counts={s:sum(b["status"]==s for b in r["boxes"]) for s in ("confirmed","editing","draft","excluded")}
++        r=self.record;im=self.host.st.image(self.iid);self.canvas.readonly=bool(im.get("assignment"));counts={s:sum(b["status"]==s for b in r["boxes"]) for s in ("confirmed","editing","draft","excluded")}
+         from .modalities import describe
+         state=("충치 검토 완료 / 사용 가능" if r.get("completion_source")=="human_caries_review" else "원본 정답 / 사용 가능") if r["complete"] else "충치 검토 대기"
+         if r.get("stale"):state="원본 윤곽 변경됨 · ‘기존 윤곽 → 박스’로 갱신 필요"
+@@ -195,6 +196,7 @@
+         if target:self.boxes.setCurrentItem(target);self.selected=target.data(Qt.UserRole)
+         else:self.selected=None
+         self.boxes.blockSignals(False);self.canvas.display(r["boxes"],self.selected);self.show_detail()
++        for button in (self.confirm_button,self.exclude_button,self.review_button):button.setEnabled(not self.canvas.readonly)
+         waiting=counts["draft"]+counts["editing"]
+         self.next_pending_button.setEnabled(bool(waiting))
+         self.next_action.setText(f"남은 박스 {waiting}개를 확인하세요.\n맞으면 확정 · 오탐이면 제외. 이후 누락을 확인하고 영상 검토를 완료합니다." if waiting else "미확정 박스가 없습니다. 기존 정확한 정답은 그대로 두세요.\n누락 충치까지 확인했으면 아래 검토 완료 버튼을 누릅니다.")
+@@ -219,6 +221,8 @@
+         for i in range(self.boxes.count()):
+             if self.boxes.item(i).data(Qt.UserRole)==bid:self.boxes.setCurrentRow(i);break
+     def persist(self,candidate,reason="edit",track=True):
++        if self.host.st.image(self.iid).get("assignment"):
++            QMessageBox.information(self,"배정된 영상","친구/공통 편집기에 배정되어 수정이 잠겨 있습니다. 공동 라벨링 탭에서 반환 또는 회수하세요.");return False
+         old=deepcopy(self.record)
+         try:
+             saved=self.data.save(candidate,reason)
+--- a/src/pano/targeted_ui.py
++++ b/src/pano/targeted_ui.py
+@@ -39,6 +39,7 @@
+         intro.setWordWrap(True);intro.setStyleSheet("background:#203c46;color:#caeee7;padding:10px;border-radius:7px;");layout.addWidget(intro)
+         self.models=QLabel();self.models.setWordWrap(True);layout.addWidget(self.models)
+         bar=QHBoxLayout();self.run_button=QPushButton("선택 영상 AI 모든 병소 예측");self.run_button.setObjectName("primary");self.run_button.clicked.connect(lambda:self.start());bar.addWidget(self.run_button)
++        shared=QPushButton("친구와 같은 박스 편집기");shared.clicked.connect(lambda:self.host.collaboration_panel.prepare_self([self.iid]) if self.iid else None);bar.addWidget(shared)
+         self.stop_button=QPushButton("현재 영상 후 중단");self.stop_button.setEnabled(False);self.stop_button.clicked.connect(self.stop);bar.addWidget(self.stop_button)
+         self.hide_boxes=QPushButton("박스 표시 숨기기");self.hide_boxes.setCheckable(True);self.hide_boxes.toggled.connect(self.toggle_boxes);bar.addWidget(self.hide_boxes)
+         self.experimental=QCheckBox("미검증 영상 종류 실험 예측");bar.addWidget(self.experimental);bar.addStretch();layout.addLayout(bar)
+@@ -151,6 +152,8 @@
+         if entry:self.show_box_dialog(entry)
+     def show_box_dialog(self,entry):
+         if not self.iid or not self.host.require_saved() or not self.host.caries_panel.require_saved():return
++        if self.host.st.image(self.iid).get("assignment"):
++            QMessageBox.information(self,"배정된 영상","다른 작업에 배정되어 수정이 잠겨 있습니다. 공동 라벨링 탭에서 미완료 회수 후 이어하세요.");return
+         from .workflow_ui import BoxReviewDialog
+         dialog=BoxReviewDialog(self.host,self.iid,entry);dialog.exec()
+         self.refresh_after_box()
+--- a/src/pano/canvas.py
++++ b/src/pano/canvas.py
+@@ -70,7 +70,7 @@
+         cv2.circle(self.mask,p,self.radius,value,-1);self.previous=p
+         self.update_overlay()
+     def mousePressEvent(self,event):
+-        self.setFocus();p=self.mapToScene(event.position().toPoint());xy=(p.x(),p.y())
++        self.setFocus();p=self.viewportTransform().inverted()[0].map(event.position());xy=(p.x(),p.y())
+         if event.button()==Qt.MiddleButton or (self.space and event.button()==Qt.LeftButton):
+             self.panning=True;self.pan_start=event.position();self.setCursor(Qt.ClosedHandCursor);event.accept();return
+         if self.readonly or self.mask is None:return super().mousePressEvent(event)
+@@ -89,7 +89,7 @@
+             event.accept();return
+         super().mousePressEvent(event)
+     def mouseMoveEvent(self,event):
+-        p=self.mapToScene(event.position().toPoint());self.cursor_pos=p
++        p=self.viewportTransform().inverted()[0].map(event.position());self.cursor_pos=p
+         if self.panning:
+             delta=event.position()-self.pan_start;self.pan_start=event.position()
+             self.horizontalScrollBar().setValue(self.horizontalScrollBar().value()-int(delta.x()))

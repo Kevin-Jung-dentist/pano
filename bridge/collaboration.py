@@ -12,6 +12,7 @@ from .duplicates import original_film_groups
 
 ROLE={"caries_ungraded":"caries","deep_caries":"findings","impacted_tooth":"findings","periapical_lesion":"hanoi"}
 GEOMETRY={"caries_ungraded":"lesion_box","deep_caries":"tooth_box","impacted_tooth":"tooth_box","periapical_lesion":"lesion_box"}
+COORDINATE_SYSTEM={"space":"original_image","units":"pixel","bbox":"xyxy","origin":"top_left","max_edge":"exclusive"}
 PERMIT=ContextVar("pano_assignment",default=None)
 def encode(x):return json.dumps(x,sort_keys=True,ensure_ascii=False,separators=(",",":"))
 def digest(x):return hashlib.sha256(encode(x).encode()).hexdigest()
@@ -82,11 +83,14 @@ def cancel(st,pid):
     with st.db:
         st.db.execute("UPDATE collaboration_packages SET state='cancelled' WHERE id=? AND state!='completed'",(pid,))
         st.db.execute("DELETE FROM collaboration_locks WHERE package_id=?",(pid,))
-def create_package(st,actor,count=50,source="hanoi",split="train",predict=True,editor_url=""):
+def create_package(st,actor,count=50,source="hanoi",split="train",predict=True,editor_url="",image_ids=None,owner_kind="friend"):
     setup(st);actor=str(actor).strip()
     if not actor or len(actor)>80 or not 1<=count<=200:raise ValueError("이름과 1~200장 분량을 지정하세요.")
     if split not in ("train","val","test"):raise ValueError("Invalid split")
     if editor_url and not editor_url.startswith("https://"):raise ValueError("웹 주소는 https://로 시작해야 합니다.")
+    if owner_kind not in ("friend","self"):raise ValueError("Invalid owner kind")
+    requested=set(image_ids) if image_ids is not None else None
+    if requested is not None and (not requested or len(requested)>200):raise ValueError("1~200장만 선택하세요.")
     pid=uuid.uuid4().hex;images=st.images();groups=reservation_groups(images)
     blocked={r[0] for r in st.db.execute("SELECT image_id FROM collaboration_locks")}
     selected=[];reserved=set()
@@ -96,13 +100,17 @@ def create_package(st,actor,count=50,source="hanoi",split="train",predict=True,e
         # Re-read locks under the writer lock to prevent simultaneous assignments.
         blocked={r[0] for r in st.db.execute("SELECT image_id FROM collaboration_locks")}
         for im in sorted(images,key=image_order):
-            if im["source"]!=source or im["split"]!=split or im["id"] in blocked|reserved:continue
+            if requested is not None:
+                if im["id"] not in requested:continue
+            elif im["source"]!=source or im["split"]!=split:continue
+            if im["id"] in blocked|reserved:continue
             group={x["id"] for x in images if groups[x["id"]]==groups[im["id"]]}
             if group & (blocked|reserved):continue
-            if all(status(st,im["id"]).values()):continue
+            if requested is None and all(status(st,im["id"]).values()):continue
             selected.append(im["id"]);reserved.update(group)
             if len(selected)>=count:break
         if not selected:raise ValueError("배정 가능한 미완료 영상이 없습니다.")
+        if requested is not None and set(selected)!=requested:raise ValueError("선택 영상 중 다른 작업에 배정됐거나 중복 원본인 영상이 있습니다.")
         st.db.execute("INSERT INTO collaboration_packages VALUES(?,?,?,?,?)",(pid,actor,"preparing","{}",now()))
         st.db.executemany("INSERT INTO collaboration_locks VALUES(?,?,?)",[(iid,pid,actor) for iid in reserved])
         st.db.commit()
@@ -110,6 +118,13 @@ def create_package(st,actor,count=50,source="hanoi",split="train",predict=True,e
     out=inside(ROOT/"collaboration"/"outbox"/(pid+".zip"));out.parent.mkdir(parents=True,exist_ok=True)
     tmp=out.with_suffix(".partial")
     try:
+        # Rebase source-derived boxes while retaining every human-edited box.
+        # A stale workspace must never be silently marked complete.
+        with permit(pid):
+            data=workspace(st)
+            for iid in selected:
+                record=data.load(iid)
+                if record.get("stale"):data.sync(record)
         options=[]
         if predict:
             from .targeted_prediction import automatic_options,_targeted_predict,_manifests
@@ -128,7 +143,13 @@ def create_package(st,actor,count=50,source="hanoi",split="train",predict=True,e
                         for o in sorted(options,key=lambda x:x["destination"]=="caries"):
                             _targeted_predict(iid,o["id"],inference_cache=cache)
             infer_all()
-        manifest={"format":"pano-work","version":1,"package_id":pid,"actor":actor,"created":now(),
+        with permit(pid):
+            for iid in selected:
+                record=workspace(st).load(iid)
+                if record.get("stale"):workspace(st).sync(record)
+        web=Path(__file__).resolve().parents[2]/"collab-web"/"dist"
+        build=hashlib.sha256(b"".join((web/n).read_bytes() for n in ("index.html","style.css","app.js","core.js","zip.js"))).hexdigest()
+        manifest={"format":"pano-work","version":1,"package_id":pid,"actor":actor,"owner_kind":owner_kind,"editor_build":build,"coordinate_system":COORDINATE_SYSTEM,"created":now(),
                   "token":uuid.uuid4().hex,"editor_url":editor_url,"models":options,
                   "images":[package_image(st,iid) for iid in selected]}
         with zipfile.ZipFile(tmp,"w",compression=zipfile.ZIP_STORED,allowZip64=False) as z:
@@ -145,6 +166,7 @@ def create_package(st,actor,count=50,source="hanoi",split="train",predict=True,e
         if st.db.execute("SELECT state FROM collaboration_packages WHERE id=?",(pid,)).fetchone()[0]!="preparing":raise ValueError("배정이 취소되었습니다.")
         for im in manifest["images"]:
             if digest(raw_state(st,im["id"]))!=im["base"]:raise ValueError("ZIP 생성 중 원본 수정 감지. 다시 배정하세요.")
+        manifest["zip_path"]=str(out.relative_to(ROOT))
         with st.db:st.db.execute("UPDATE collaboration_packages SET state='exported',record=? WHERE id=?",(encode(manifest),pid))
         return {"package_id":pid,"path":str(out),"images":len(selected),"actor":actor,"size_mb":round(out.stat().st_size/1e6,1)}
     except Exception:
@@ -153,6 +175,7 @@ def create_package(st,actor,count=50,source="hanoi",split="train",predict=True,e
             st.db.execute("DELETE FROM collaboration_locks WHERE package_id=?",(pid,))
         raise
 def validate_result(manifest,result):
+    if result.get("coordinate_system",COORDINATE_SYSTEM)!=COORDINATE_SYSTEM:raise ValueError("지원하지 않는 좌표계입니다.")
     if result.get("format")!="pano-result" or result.get("version")!=1:raise ValueError("지원하지 않는 결과 형식")
     if result.get("package_id")!=manifest["package_id"] or result.get("token")!=manifest["token"]:raise ValueError("다른 배정 작업의 결과입니다.")
     originals={im["id"]:im for im in manifest["images"]};seen=set()
@@ -193,7 +216,7 @@ def import_result(st,path):
     prior=st.db.execute("SELECT record FROM collaboration_returns WHERE id=?",(rid,)).fetchone()
     if prior:return {"duplicate":True,**json.loads(prior[0])}
     row=st.db.execute("SELECT record,state FROM collaboration_packages WHERE id=?",(pid,)).fetchone()
-    if not row or row[1] not in ("exported","completed"):raise ValueError("유효한 배정 작업이 아닙니다.")
+    if not row or row[1] not in ("exported","returned","completed","reclaimed"):raise ValueError("유효한 배정 작업이 아닙니다.")
     manifest=json.loads(row[0]);bases=validate_result(manifest,result)
     st.db.execute("BEGIN IMMEDIATE")
     try:
@@ -201,6 +224,10 @@ def import_result(st,path):
         for returned in result["images"]:
             iid=returned["id"];base=bases[iid]
             old={b["id"]:b for b in base["boxes"]}
+            if iid in manifest.get("reclaimed",{}):
+                if manifest.get("applied",{}).get(iid)==digest(returned):unchanged.append(iid)
+                else:conflicts.append(iid)
+                continue
             changed=any(b["id"] not in old or any(b[k]!=old[b["id"]][k] for k in ("bbox","status")) for b in returned["boxes"])
             changed=changed or returned["review"]!=base["review"] or returned["needs_review"] or bool(returned.get("history"))
             if not changed:unchanged.append(iid);continue
@@ -255,7 +282,10 @@ def import_result(st,path):
                     reviews[role]={"signature":signature(aa,role),"reviewed_at":stamp,"scope":role,"actor":manifest["actor"] if role in human_scopes else "preserved_reference_coverage",
                                    "negative":not any(a["status"]!="excluded" for a in relevant(aa,role))}
                 else:reviews.pop(role,None)
-            meta["collaboration_review"]={"actor":manifest["actor"],"package_id":pid,"needs_review":returned["needs_review"],"at":stamp}
+            complete=all(returned["review"].values()) and not returned["needs_review"]
+            meta["collaboration_review"]={"actor":manifest["actor"],"package_id":pid,"needs_review":returned["needs_review"],"complete":complete,"owner_kind":manifest.get("owner_kind","friend"),"at":stamp}
+            manifest.setdefault("outcomes",{})[iid]={"complete":complete,"review":returned["review"],"needs_review":returned["needs_review"],"at":stamp}
+            meta.pop("collaboration_handoff",None)
             st.db.execute("UPDATE images SET fully_reviewed=0,metadata=? WHERE id=?",(encode(meta),iid))
             st.db.execute("INSERT INTO events(kind,record,created) VALUES(?,?,?)",("collaboration_return",encode({"image_id":iid,"actor":manifest["actor"],"package_id":pid,"history":returned.get("history",[]),"review":returned["review"]}),stamp))
             for scope in sorted(human_scopes):
@@ -263,8 +293,9 @@ def import_result(st,path):
                 st.db.execute("INSERT OR IGNORE INTO human_review_events VALUES(?,?,?,?,?,?,?)",
                     (rid+":"+iid+":"+scope,iid,scope,action,encode({"actor":manifest["actor"],"provenance":"collaboration_return","package_id":pid}),stamp,stamp))
             manifest["applied"][iid]=digest(returned);accepted.append(iid)
-        done=len(manifest.get("applied",{}))==len(manifest["images"])
-        st.db.execute("UPDATE collaboration_packages SET record=?,state=? WHERE id=?",(encode(manifest),"completed" if done else "exported",pid))
+        progress=package_progress(st,pid,manifest)
+        state="completed" if progress["complete"]==progress["total"] else "reclaimed" if progress["reclaimed"] else "returned" if progress["returned"]==progress["total"] else "exported"
+        st.db.execute("UPDATE collaboration_packages SET record=?,state=? WHERE id=?",(encode(manifest),state,pid))
         # Returned images become editable locally. Later changes require a new assignment.
         images=st.images();groups=reservation_groups(images)
         for iid in accepted:
@@ -276,3 +307,60 @@ def import_result(st,path):
         st.db.commit()
         return report
     except Exception:st.db.rollback();raise
+
+
+def package_progress(st,pid,manifest=None):
+    if manifest is None:
+        row=st.db.execute("SELECT record FROM collaboration_packages WHERE id=?",(pid,)).fetchone()
+        if not row:raise ValueError("Unknown package")
+        manifest=json.loads(row[0])
+    applied=manifest.get("applied",{});outcomes=manifest.get("outcomes",{});reclaimed=manifest.get("reclaimed",{})
+    details=[]
+    for im in manifest.get("images",[]):
+        iid=im["id"];outcome=outcomes.get(iid,{})
+        # Older packages only recorded hashes; derive the return's completion
+        # from its stored review, never from later edits by another worker.
+        if iid in applied and not outcome:
+            saved=st.image(iid)["metadata"].get("collaboration_review",{})
+            outcome={"complete":saved.get("complete",False)} if saved.get("package_id")==pid else {}
+        state="reclaimed" if iid in reclaimed else "complete" if outcome.get("complete") else "partial" if iid in applied else "waiting"
+        details.append({"id":iid,"name":im["name"],"state":state})
+    return {"total":len(details),"returned":sum(x["id"] in applied for x in details),
+            "complete":sum(x["state"]=="complete" for x in details),
+            "partial":sum(x["state"]=="partial" for x in details),
+            "waiting":sum(x["state"]=="waiting" for x in details),
+            "reclaimed":sum(x["state"]=="reclaimed" for x in details),
+            "details":details,"owner_kind":manifest.get("owner_kind","friend")}
+
+def reclaim_unfinished(st,pid):
+    """Return only unfinished assignment images; preserve all imported work."""
+    setup(st)
+    st.db.execute("BEGIN IMMEDIATE")
+    try:
+        row=st.db.execute("SELECT record,state FROM collaboration_packages WHERE id=?",(pid,)).fetchone()
+        if not row or row[1] in ("preparing","failed","cancelled"):raise ValueError("완성된 배정에서만 미완료 영상을 회수할 수 있습니다.")
+        manifest=json.loads(row[0]);progress=package_progress(st,pid,manifest)
+        candidates=[d["id"] for d in progress["details"] if d["state"] in ("waiting","partial")]
+        groups=reservation_groups(st.images());reclaimed=[];skipped=[]
+        for iid in candidates:
+            related=[x for x,g in groups.items() if g==groups[iid]]
+            foreign=any(st.db.execute("SELECT 1 FROM collaboration_locks WHERE image_id=? AND package_id!=?",(x,pid)).fetchone() for x in related)
+            if foreign:skipped.append(iid);continue
+            meta=st.image(iid)["metadata"];stamp=now()
+            meta["collaboration_handoff"]={"state":"reclaimed","actor":manifest["actor"],"package_id":pid,"at":stamp}
+            st.db.execute("UPDATE images SET metadata=? WHERE id=?",(encode(meta),iid))
+            manifest.setdefault("reclaimed",{})[iid]=stamp
+            st.db.executemany("DELETE FROM collaboration_locks WHERE package_id=? AND image_id=?",[(pid,x) for x in related])
+            reclaimed.append(iid)
+        if reclaimed:
+            st.db.execute("UPDATE collaboration_packages SET record=?,state='reclaimed' WHERE id=?",(encode(manifest),pid))
+            st.db.execute("INSERT INTO events(kind,record,created) VALUES(?,?,?)",("collaboration_reclaim",encode({"package_id":pid,"images":reclaimed}),now()))
+        st.db.commit()
+        return {"package_id":pid,"reclaimed":reclaimed,"skipped":skipped}
+    except Exception:st.db.rollback();raise
+
+def package_path(st,pid):
+    row=st.db.execute("SELECT record FROM collaboration_packages WHERE id=?",(pid,)).fetchone()
+    if not row:raise ValueError("Unknown package")
+    manifest=json.loads(row[0])
+    return inside(ROOT/manifest.get("zip_path",str(Path("collaboration/outbox")/(pid+".zip"))))
