@@ -3,6 +3,7 @@
 <body><header><a class="brand" href="/play/"><b>p.</b> League of Doctors</a><a href="/play/">게임으로 돌아가기</a></header><main class="terms">
 <p>운영자용 · 2026-10-17</p><h1>Google 로그인 연결하기</h1>
 <p>Google 클라이언트 정보를 Cloudflare 운영 환경의 암호화된 Secret으로 등록하고 로그인용 D1 데이터베이스를 연결했습니다. 아래 내용은 설정을 다시 확인하거나 변경할 때 사용하는 안내입니다. 실제 영상 출제에 필요한 비공개 영상 저장소와 문제은행 업로드는 별도로 준비해야 합니다.</p>
+<div class="note"><strong>현재 확인된 문제:</strong> 기존 클라이언트가 데스크톱 유형이라 <code>redirect_uri_mismatch</code>가 발생합니다. 아래 안내대로 <strong>웹 애플리케이션</strong> 클라이언트를 만들고 두 Secret 값을 교체해야 로그인이 완료됩니다.</div>
 <div class="note">Google 앱은 현재 <strong>테스트 상태</strong>입니다. Google 콘솔의 <strong>Audience / 대상 → 테스트 사용자</strong>에 로그인할 계정이 등록되어 있는지 확인하세요. 모든 사용자에게 공개하려면 Google의 게시 요건을 확인해야 합니다. 비밀값은 Cloudflare Secret으로만 관리합니다.</div>
 
 <h2>1. Google에서 웹 앱 인증 만들기</h2>

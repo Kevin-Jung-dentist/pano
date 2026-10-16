@@ -66,6 +66,9 @@ node scripts/bank.mjs export-candidates pano-game F:\pano\league\returns\candida
 Google OAuth 인증 정보는 Cloudflare Production의 암호화된 Secret으로 관리합니다.
 로그인용 D1 `pano-game`에는 0001–0003 마이그레이션을 적용했습니다.
 `wrangler.jsonc`의 `env.production`에만 운영 DB를 연결하며 미리보기에는 연결하지 않습니다.
+로그인 시험에서 기존 클라이언트가 데스크톱 유형으로 확인되어 `redirect_uri_mismatch`가 발생했습니다.
+웹 애플리케이션 클라이언트로 교체해야 실제 로그인이 완료됩니다. 승인된 리디렉션 URI는
+`https://pano-9kh.pages.dev/api/auth/callback`입니다.
 Google 앱은 현재 테스트 상태이므로 Google 콘솔의 테스트 사용자 설정을 확인하세요.
 R2 및 문제은행 업로드는 아직 연결 전입니다. 로그인 연결과 실제 영상 출제 준비는 별개입니다.
 [운영자 설정 안내](https://pano-9kh.pages.dev/play/setup)를 참고하세요.
