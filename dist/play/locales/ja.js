@@ -203,7 +203,11 @@ LoDLocales.ja={
     "adminOnly": "管理者のみ利用できます。",
     "demoDeleteConfirm": "削除を確認してください。",
     "demoInvalidRevision": "記録のバージョンが無効です。",
-    "demoConflict": "別の画面で変更されました。更新して編集してください。"
+    "demoConflict": "別の画面で変更されました。更新して編集してください。",
+    "demoCreateInvalid": "追加リクエストが無効です。ページを開き直してください。",
+    "demoScoreInvalid": "平均スコアは0から100で入力してください。",
+    "demoRoundsInvalid": "完了セット数は1から100000の整数で入力してください。",
+    "demoCreateConflict": "このリクエストでは別の記録が保存済みです。管理者一覧を確認してください。"
   },
   "demoNav": "読影例",
   "seeExample": "読影画面を見る",
@@ -266,5 +270,16 @@ LoDLocales.ja={
   "adminSaved": "変更を保存しました。",
   "adminReady": "ニックネームを編集し、名前を保存を押してください。",
   "adminSignIn": "管理者のGoogleアカウントでログインしてください。",
-  "adminOnly": "管理者のみ利用できます。"
+  "adminOnly": "管理者のみ利用できます。",
+  "addDemo": "デモ記録を追加",
+  "backToDemos": "デモ一覧に戻る",
+  "createDemoIntro": "ランキングにデモ参加者を1人追加します。実際の回答や学習データは作成されません。",
+  "createDemoHint": "名前・国・所属・表示する点数を入力して追加してください。管理者一覧で名前の変更や削除ができます。",
+  "demoUniversityHint": "表示する大学・所属名",
+  "demoScoreLabel": "平均スコア（0–100）",
+  "demoRoundsLabel": "完了セット数（1以上）",
+  "createDemo": "記録を追加",
+  "demoCreated": "デモ記録を追加しました。続けて追加するか一覧に戻れます。",
+  "demoRetryCreate": "保存結果確認・再試行",
+  "demoRetryOriginal": "同じ入力で再試行し、保存結果を確認してください。"
 };

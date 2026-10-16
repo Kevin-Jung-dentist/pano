@@ -50,7 +50,11 @@ LoDLocales.it={
     "adminOnly": "Accesso riservato agli amministratori.",
     "demoDeleteConfirm": "Conferma l’eliminazione.",
     "demoInvalidRevision": "Versione non valida.",
-    "demoConflict": "Modificato altrove. Aggiorna e modifica."
+    "demoConflict": "Modificato altrove. Aggiorna e modifica.",
+    "demoCreateInvalid": "Richiesta non valida. Riapri la pagina.",
+    "demoScoreInvalid": "Inserisci un punteggio tra 0 e 100.",
+    "demoRoundsInvalid": "Inserisci un intero da 1 a 100000 per le serie.",
+    "demoCreateConflict": "Questa richiesta ha già salvato un altro record. Controlla l’elenco."
   },
   "historyTitle": "La tua cronologia di lettura",
   "historyResult": "Vedi risultati",
@@ -266,5 +270,16 @@ LoDLocales.it={
   "adminSaved": "Modifiche salvate.",
   "adminReady": "Modifica un nickname e premi Salva nome.",
   "adminSignIn": "Accedi con l’account Google dell’amministratore.",
-  "adminOnly": "Accesso riservato agli amministratori."
+  "adminOnly": "Accesso riservato agli amministratori.",
+  "addDemo": "Aggiungi record demo",
+  "backToDemos": "Torna ai record demo",
+  "createDemoIntro": "Aggiungi un lettore demo alla classifica. Non crea risposte reali o dati di addestramento.",
+  "createDemoHint": "Inserisci nome, paese, affiliazione e punteggio, poi aggiungi il record. Gestiscilo dall’elenco amministratore.",
+  "demoUniversityHint": "Università o affiliazione visualizzata",
+  "demoScoreLabel": "Punteggio medio (0–100)",
+  "demoRoundsLabel": "Serie completate (almeno 1)",
+  "createDemo": "Aggiungi record",
+  "demoCreated": "Record demo aggiunto. Aggiungine un altro o torna all’elenco.",
+  "demoRetryCreate": "Verifica / riprova",
+  "demoRetryOriginal": "Riprova con gli stessi dati per confermare il salvataggio."
 };

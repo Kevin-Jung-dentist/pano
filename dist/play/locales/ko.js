@@ -203,7 +203,11 @@ LoDLocales.ko={
     "adminOnly": "관리자 계정만 접근할 수 있습니다.",
     "demoDeleteConfirm": "삭제 확인이 필요합니다.",
     "demoInvalidRevision": "버전 정보가 올바르지 않습니다.",
-    "demoConflict": "다른 창에서 변경되었습니다. 새로고침 후 다시 수정하세요."
+    "demoConflict": "다른 창에서 변경되었습니다. 새로고침 후 다시 수정하세요.",
+    "demoCreateInvalid": "추가 요청 정보가 올바르지 않습니다. 페이지를 다시 열어 주세요.",
+    "demoScoreInvalid": "평균 점수는 0부터 100까지 입력하세요.",
+    "demoRoundsInvalid": "완료 세트 수는 1부터 100000까지 정수로 입력하세요.",
+    "demoCreateConflict": "이 요청으로 이미 다른 기록이 저장되었습니다. 관리자 목록에서 확인하세요."
   },
   "demoNav": "판독 예시",
   "seeExample": "판독 화면 살펴보기",
@@ -266,5 +270,16 @@ LoDLocales.ko={
   "adminSaved": "변경 내용을 저장했습니다.",
   "adminReady": "닉네임을 수정한 뒤 이름 저장을 누르세요.",
   "adminSignIn": "관리자 Google 계정으로 로그인하세요.",
-  "adminOnly": "관리자 계정만 접근할 수 있습니다."
+  "adminOnly": "관리자 계정만 접근할 수 있습니다.",
+  "addDemo": "데모 기록 추가",
+  "backToDemos": "데모 목록으로",
+  "createDemoIntro": "리더보드에 표시할 데모 참가자 한 명을 추가합니다. 실제 답변이나 학습 자료는 생성되지 않습니다.",
+  "createDemoHint": "이름·국가·소속과 표시할 점수를 입력한 뒤 추가를 누르세요. 저장한 기록은 관리자 목록에서 수정·삭제할 수 있습니다.",
+  "demoUniversityHint": "표시할 대학 또는 소속 이름",
+  "demoScoreLabel": "평균 점수 (0–100)",
+  "demoRoundsLabel": "완료 세트 수 (1 이상)",
+  "createDemo": "기록 추가",
+  "demoCreated": "데모 기록을 추가했습니다. 아래에서 다른 기록을 추가하거나 목록으로 돌아갈 수 있습니다.",
+  "demoRetryCreate": "저장 결과 확인·재시도",
+  "demoRetryOriginal": "먼저 같은 입력으로 저장을 재시도해 결과를 확인하세요."
 };

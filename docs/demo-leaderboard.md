@@ -4,7 +4,11 @@ The public leaderboard API keeps real results in `entries` and fictional display
 
 Migration `0007_demo_leaderboard.sql` seeds 24 fictional readers in 12 countries. Their study circles are fictional. These rows live only in `game_demo_leaders`: they are never users, submissions, paid credits, verified references or training candidates.
 
-Sign in to the main site, then open `/admin/`. An authorized account can rename a demo reader, delete one demo record, or delete all demos. The admin-only annotation in parentheses cannot be removed. Renames use revision checks, preserve other unsaved names, and survive reloads. Deleted rows are not reseeded by deployment; the migration runs once. Deletion removes the rows from the public display but does not modify real scores, users or annotations. A database backup can restore accidentally removed demo rows.
+Sign in to the main site, then open the bookmarked `/admin/` address. The public navigation does not link to administration. An authorized account can open **Add demo record** (`/admin/new/`) and enter a nickname, country, affiliation, average score (0–100) and number of completed sets (1–100000). Each form submission has a UUID so retrying the same request does not insert a duplicate. A failed request keeps the input; an ambiguous save locks the fields until the identical request is retried. No real user, answer or training record is created.
+
+An authorized account can also rename a demo reader, delete one demo record, or delete all demos. The admin-only annotation in parentheses cannot be removed. Renames use revision checks, preserve other unsaved names, and survive reloads. Deleted rows are not reseeded by deployment; the migration runs once. Deletion removes the rows from the public display but does not modify real scores, users or annotations. A database backup can restore accidentally removed demo rows.
+
+Cloudflare Pages middleware checks the session and the server administrator allowlist before serving `/admin`, `/admin/*`, including the form and its assets. Unauthorized or expired sessions receive a generic 404; authorized responses are private, uncached and excluded from indexing. Keeping the address out of navigation is only a presentation choice; authorization is enforced independently on pages and every management API. Administrator accounts are excluded from public individual, country and university standings, but retain their own scores and reading history.
 
 ## Owner bootstrap
 

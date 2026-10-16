@@ -203,7 +203,11 @@ LoDLocales.en={
     "adminOnly": "Administrator access only.",
     "demoDeleteConfirm": "Confirm deletion.",
     "demoInvalidRevision": "Invalid record version.",
-    "demoConflict": "Changed elsewhere. Refresh and edit again."
+    "demoConflict": "Changed elsewhere. Refresh and edit again.",
+    "demoCreateInvalid": "Invalid creation request. Reopen this page.",
+    "demoScoreInvalid": "Enter an average score between 0 and 100.",
+    "demoRoundsInvalid": "Enter an integer from 1 to 100000 for completed sets.",
+    "demoCreateConflict": "This request already saved a different record. Check the admin list."
   },
   "demoNav": "Preview",
   "seeExample": "Explore the reading experience",
@@ -266,5 +270,16 @@ LoDLocales.en={
   "adminSaved": "Changes saved.",
   "adminReady": "Edit a nickname, then select Save name.",
   "adminSignIn": "Sign in with the administrator's Google account.",
-  "adminOnly": "Administrator access only."
+  "adminOnly": "Administrator access only.",
+  "addDemo": "Add demo record",
+  "backToDemos": "Back to demo records",
+  "createDemoIntro": "Add one demo reader to the leaderboard. This does not create real answers or training data.",
+  "createDemoHint": "Enter a name, country, affiliation and displayed score, then add the record. Manage it from the admin list.",
+  "demoUniversityHint": "Displayed university or affiliation",
+  "demoScoreLabel": "Average score (0–100)",
+  "demoRoundsLabel": "Completed sets (at least 1)",
+  "createDemo": "Add record",
+  "demoCreated": "Demo record added. Add another below or return to the list.",
+  "demoRetryCreate": "Check save / retry",
+  "demoRetryOriginal": "Retry the same input first to confirm whether it was saved."
 };

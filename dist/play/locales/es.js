@@ -50,7 +50,11 @@ LoDLocales.es={
     "adminOnly": "Acceso exclusivo para administradores.",
     "demoDeleteConfirm": "Confirma la eliminación.",
     "demoInvalidRevision": "Versión inválida.",
-    "demoConflict": "Cambió en otra ventana. Actualiza y edita."
+    "demoConflict": "Cambió en otra ventana. Actualiza y edita.",
+    "demoCreateInvalid": "Solicitud de creación inválida. Abre la página de nuevo.",
+    "demoScoreInvalid": "Introduce una puntuación entre 0 y 100.",
+    "demoRoundsInvalid": "Introduce un entero entre 1 y 100000 para las series.",
+    "demoCreateConflict": "Esta solicitud ya guardó otro registro. Revisa la lista de administración."
   },
   "historyTitle": "Tu historial de lecturas",
   "historyResult": "Ver resultados",
@@ -266,5 +270,16 @@ LoDLocales.es={
   "adminSaved": "Cambios guardados.",
   "adminReady": "Edita un apodo y pulsa Guardar nombre.",
   "adminSignIn": "Entra con la cuenta de Google del administrador.",
-  "adminOnly": "Acceso exclusivo para administradores."
+  "adminOnly": "Acceso exclusivo para administradores.",
+  "addDemo": "Añadir registro demo",
+  "backToDemos": "Volver a las demos",
+  "createDemoIntro": "Añade un lector demo a la clasificación. No crea respuestas reales ni datos de entrenamiento.",
+  "createDemoHint": "Introduce nombre, país, afiliación y puntuación, y añade el registro. Puedes gestionarlo desde la lista de administración.",
+  "demoUniversityHint": "Universidad o afiliación mostrada",
+  "demoScoreLabel": "Puntuación media (0–100)",
+  "demoRoundsLabel": "Series completadas (mínimo 1)",
+  "createDemo": "Añadir registro",
+  "demoCreated": "Registro demo añadido. Añade otro o vuelve a la lista.",
+  "demoRetryCreate": "Comprobar / reintentar",
+  "demoRetryOriginal": "Reintenta con los mismos datos para confirmar el guardado."
 };

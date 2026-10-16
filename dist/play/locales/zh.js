@@ -50,7 +50,11 @@ LoDLocales.zh={
     "adminOnly": "仅限管理员访问。",
     "demoDeleteConfirm": "请确认删除。",
     "demoInvalidRevision": "记录版本无效。",
-    "demoConflict": "已在其他窗口更改，请刷新后编辑。"
+    "demoConflict": "已在其他窗口更改，请刷新后编辑。",
+    "demoCreateInvalid": "添加请求无效，请重新打开此页。",
+    "demoScoreInvalid": "平均分须在0至100之间。",
+    "demoRoundsInvalid": "完成组数须为1至100000的整数。",
+    "demoCreateConflict": "此请求已保存不同记录，请检查管理列表。"
   },
   "historyTitle": "你的阅片记录",
   "historyResult": "查看结果",
@@ -266,5 +270,16 @@ LoDLocales.zh={
   "adminSaved": "更改已保存。",
   "adminReady": "修改昵称后点击保存昵称。",
   "adminSignIn": "请用管理员 Google 账号登录。",
-  "adminOnly": "仅限管理员访问。"
+  "adminOnly": "仅限管理员访问。",
+  "addDemo": "添加演示记录",
+  "backToDemos": "返回演示列表",
+  "createDemoIntro": "向排行榜添加一位演示参与者，不创建真实答案或训练数据。",
+  "createDemoHint": "填写昵称、国家、机构和显示分数后添加，可在管理列表中更名或删除。",
+  "demoUniversityHint": "显示的学校或机构名称",
+  "demoScoreLabel": "平均分（0–100）",
+  "demoRoundsLabel": "完成组数（至少1）",
+  "createDemo": "添加记录",
+  "demoCreated": "演示记录已添加。可继续添加或返回列表。",
+  "demoRetryCreate": "检查保存／重试",
+  "demoRetryOriginal": "请先用相同输入重试，以确认是否已保存。"
 };

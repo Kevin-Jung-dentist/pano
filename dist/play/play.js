@@ -21,7 +21,7 @@ function renderAnswers(){
  editor.boxes.forEach((b,i)=>{const btn=document.createElement("button");btn.className="answer-row"+(editor.selected===b.id?" selected":"");btn.textContent=(i+1)+". "+t(b.category);const small=document.createElement("small");small.textContent=b.bbox.map(x=>I.number(x)).join(", ");btn.append(small);btn.onclick=()=>{editor.setMode("select");editor.select(b.id);};$("answer-list").append(btn);});
  $("remove-box").disabled=!editor.selected||submitting;
 }
-function accountLabels(){$("admin-link").hidden=!me?.is_admin;$("account").hidden=!me;$("account").textContent=me?.nickname||t("profile");$("login-top").hidden=!!me;$("start").textContent=t(me?"start":"startLogin");}
+function accountLabels(){$("account").hidden=!me;$("account").textContent=me?.nickname||t("profile");$("login-top").hidden=!!me;$("start").textContent=t(me?"start":"startLogin");}
 async function refreshMe(){const data=await api("me");me=data.user;paymentAccount=data.payments||{credits:0,pending:null};accountLabels();payments.render();await loadHistory();}
 function fillProfile(){if(!me)return;panel("profile-panel");$("nickname").value=me.nickname||"";$("country").value=me.country||"";$("university").value=me.university||"";$("terms").checked=me.profile_complete;}
 async function loadHistory(){
