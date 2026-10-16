@@ -1,0 +1,1 @@
+function showTerms(){document.querySelectorAll("[data-language]").forEach(e=>e.hidden=e.dataset.language!==LoDI18n.language);}document.addEventListener("lod-language",showTerms);showTerms();

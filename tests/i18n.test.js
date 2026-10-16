@@ -1,0 +1,7 @@
+const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
+const root='dist/play/';
+const ctx=vm.createContext({});for(const l of ['ko','en','ja'])vm.runInContext(fs.readFileSync(root+'locales/'+l+'.js','utf8'),ctx);
+const langs=JSON.parse(JSON.stringify(ctx.LoDLocales));
+test('all three languages have matching translation and error keys',()=>{for(const l of ['en','ja']){assert.deepEqual(Object.keys(langs[l]).sort(),Object.keys(langs.ko).sort());assert.deepEqual(Object.keys(langs[l].errors).sort(),Object.keys(langs.ko.errors).sort());for(const k of Object.keys(langs.ko)){if(k==='errors')continue;assert.equal(typeof langs[l][k],'string');assert.ok(langs[l][k].length);assert.deepEqual((langs[l][k].match(/\{\w+\}/g)||[]).sort(),(langs.ko[k].match(/\{\w+\}/g)||[]).sort());}}});
+test('every static and literal dynamic UI label has a translation',()=>{const html=fs.readFileSync(root+'index.html','utf8'),js=fs.readFileSync(root+'play.js','utf8');const keys=[...html.matchAll(/data-(?:i18n|placeholder|aria)="([^"]+)"/g),...js.matchAll(/\bt\("([^"]+)"/g)].map(x=>x[1]);for(const l of ['ko','en','ja'])for(const k of keys)assert.equal(typeof langs[l][k],'string',l+': '+k);});
+test('private bank data, references and QA login are outside public assets',()=>{const html=fs.readFileSync(root+'index.html','utf8');assert.ok(!html.includes('scored-count'));assert.ok(!html.includes('unscored-count'));assert.ok(!fs.existsSync('dist/manifest.json'));assert.ok(!fs.existsSync('functions/__qa'));});

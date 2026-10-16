@@ -57,7 +57,7 @@ class BoxEditor{
  remove(){if(!this.selected||!this.ready||this.locked)return;this.history.push(structuredClone(this.boxes));this.future=[];this.boxes=this.boxes.filter(x=>x.id!==this.selected);this.selected=null;this.changed();this.paint();}
  undo(){if(this.locked||!this.history.length)return;this.future.push(structuredClone(this.boxes));this.boxes=this.history.pop();this.selected=null;this.changed();this.paint();}
  redo(){if(this.locked||!this.future.length)return;this.history.push(structuredClone(this.boxes));this.boxes=this.future.pop();this.selected=null;this.changed();this.paint();}
- toggle(){this.hidden=!this.hidden;document.getElementById("hide-boxes").textContent=this.hidden?"박스 표시 H":"박스 숨기기 H";this.paint();}
+ toggle(){this.hidden=!this.hidden;document.getElementById("hide-boxes").textContent=window.LoDI18n.t(this.hidden?"show":"hide");this.paint();}
  paint(){
  const r=this.canvas.getBoundingClientRect();if(!r.width||!r.height)return;const dpr=window.devicePixelRatio||1;this.canvas.width=Math.round(r.width*dpr);this.canvas.height=Math.round(r.height*dpr);
  const c=this.ctx;c.setTransform(this.canvas.width/r.width,0,0,this.canvas.height/r.height,0,0);c.fillStyle="#101a17";c.fillRect(0,0,r.width,r.height);if(!this.ready)return;

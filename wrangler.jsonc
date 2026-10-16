@@ -4,6 +4,7 @@
   "compatibility_date": "2026-10-15",
   "vars": {
     "APP_ORIGIN": "https://pano-9kh.pages.dev",
-    "SCORED_PER_ROUND": "6"
+    "SCORED_PER_ROUND": "3",
+    "TRAINING_MIN_SCORE": "50"
   }
 }

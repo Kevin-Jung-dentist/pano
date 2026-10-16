@@ -1,7 +1,8 @@
 /* Browser/server contract. Original-image pixels; no browser-computed score is trusted. */
 (function(root){
 "use strict";
-const version="pano-game-1";
+const version="lod-score-2";
+const matchThreshold=.30;
 const categories=["caries_ungraded","deep_caries","periapical_lesion","impacted_tooth"];
 const geometry={caries_ungraded:"lesion_box",deep_caries:"tooth_box",periapical_lesion:"lesion_box",impacted_tooth:"tooth_box"};
 const coordinateSystem={space:"original_image",units:"pixel",bbox:"xyxy",origin:"top_left",max_edge:"exclusive"};
@@ -17,7 +18,7 @@ function boxes(input,im){
  });
 }
 function iou(a,b){const area=r=>(r[2]-r[0])*(r[3]-r[1]);const i=Math.max(0,Math.min(a[2],b[2])-Math.max(a[0],b[0]))*Math.max(0,Math.min(a[3],b[3])-Math.max(a[1],b[1]));return i/(area(a)+area(b)-i);}
-function grade(predictions,reference,im,threshold=.3){
+function legacyGrade(predictions,reference,im,threshold=.3){
  const pred=boxes(predictions,im),ref=boxes(reference,im);
  if(!Number.isFinite(threshold)||threshold<.1||threshold>1)throw Error("채점 기준 오류");
  // Multiple acceptable annotations of one physical finding share finding_id.
@@ -30,8 +31,40 @@ function grade(predictions,reference,im,threshold=.3){
  matches:[...owner].map(([gi,pi])=>({box_id:pred[pi].id,finding_id:groups[gi]})),
  extra:pred.filter((_,i)=>!matched.has(i)).map(b=>b.id),missed:groups.filter((_,i)=>!owner.has(i))};
 }
-function summary(items){const scored=items.filter(x=>x.scored);const points=scored.reduce((s,x)=>s+x.grade.points,0);return {points,scored_count:scored.length,unscored_count:items.length-scored.length,average:scored.length?points/scored.length:null};}
+function legacySummary(items){const scored=items.filter(x=>x.scored);const points=scored.reduce((s,x)=>s+x.grade.points,0);return {points,scored_count:scored.length,unscored_count:items.length-scored.length,average:scored.length?points/scored.length:null};}
+// Maximum cardinality first, then maximum total IoU. Hungarian assignment is
+// deterministic in score and does not depend on reference/input box order.
+function assignment(weights){
+ const n=weights.length;if(!n)return [];const u=Array(n+1).fill(0),v=Array(n+1).fill(0),p=Array(n+1).fill(0),way=Array(n+1).fill(0);
+ for(let i=1;i<=n;i++){p[0]=i;let j0=0;const min=Array(n+1).fill(Infinity),used=Array(n+1).fill(false);
+ do{used[j0]=true;const i0=p[j0];let delta=Infinity,j1=0;
+ for(let j=1;j<=n;j++)if(!used[j]){const cur=-weights[i0-1][j-1]-u[i0]-v[j];if(cur<min[j]){min[j]=cur;way[j]=j0;}if(min[j]<delta){delta=min[j];j1=j;}}
+ for(let j=0;j<=n;j++){if(used[j]){u[p[j]]+=delta;v[j]-=delta;}else min[j]-=delta;}j0=j1;
+ }while(p[j0]!==0);
+ do{const j1=way[j0];p[j0]=p[j1];j0=j1;}while(j0!==0);
+ }return p.slice(1).map((i,j)=>[i-1,j]);
+}
+function metrics(tp,fp,fn,iou_sum){
+ const reference_count=tp+fn,mean_iou=tp?iou_sum/tp:null,recall=reference_count?tp/reference_count:null,precision=tp+fp?tp/(tp+fp):null;
+ return {tp,fp,fn,reference_count,iou_sum,mean_iou,recall,precision,score:reference_count?Math.max(0,Math.min(100,100*iou_sum/(reference_count+fp))):null,max_score:100};
+}
+function grade(predictions,reference,im,threshold=matchThreshold){
+ const pred=boxes(predictions,im),ref=boxes(reference,im);
+ if(!Number.isFinite(threshold)||threshold<.1||threshold>1)throw Error("채점 기준 오류");
+ const groups=[...new Set(reference.map(b=>b.finding_id||b.id))],n=Math.max(pred.length,groups.length);
+ const overlaps=pred.map(p=>groups.map(g=>Math.max(0,...ref.map((r,i)=>(reference[i].finding_id||r.id)===g&&p.category===r.category&&p.geometry===r.geometry?iou(p.bbox,r.bbox):0))));
+ const weights=Array.from({length:n},(_,i)=>Array.from({length:n},(_,j)=>overlaps[i]?.[j]>=threshold?n+1+overlaps[i][j]:0));
+ const pairs=assignment(weights).filter(([i,j])=>overlaps[i]?.[j]>=threshold),matched=new Set(pairs.map(x=>x[0])),found=new Set(pairs.map(x=>x[1]));
+ const iou_sum=pairs.reduce((s,[i,j])=>s+overlaps[i][j],0);
+ return {...metrics(pairs.length,pred.length-pairs.length,groups.length-pairs.length,iou_sum),points:pairs.length,threshold,rule_version:version,
+ matches:pairs.map(([i,j])=>({box_id:pred[i].id,finding_id:groups[j],iou:overlaps[i][j]})),
+ extra:pred.filter((_,i)=>!matched.has(i)).map(b=>b.id),missed:groups.filter((_,j)=>!found.has(j))};
+}
+function summary(items){
+ const scored=items.filter(x=>x.scored);const sums=scored.reduce((a,x)=>{for(const k of ["tp","fp","fn","iou_sum"])a[k]+=x.grade[k];return a;},{tp:0,fp:0,fn:0,iou_sum:0});
+ return {...metrics(sums.tp,sums.fp,sums.fn,sums.iou_sum),points:sums.tp,scored_count:scored.length,unscored_count:items.length-scored.length,rule_version:version};
+}
 function toImage(x,y,t){return [(x-t.left-t.tx)/t.scale,(y-t.top-t.ty)/t.scale];}
-const api={version,categories,geometry,coordinateSystem,countryCodes,profile,boxes,iou,grade,summary,toImage};
+const api={version,matchThreshold,metrics,legacyGrade,legacySummary,categories,geometry,coordinateSystem,countryCodes,profile,boxes,iou,grade,summary,toImage};
 if(typeof module!=="undefined")module.exports=api;else root.PanoGame=api;
 })(globalThis);

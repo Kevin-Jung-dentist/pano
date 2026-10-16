@@ -1,12 +1,12 @@
 import Game from "../dist/game-core.js";
 import * as Auth from "./auth.mjs";
-const TERMS="2026-10-16-v1";
+const TERMS="2026-10-17-v2";
 const fail=(status,message)=>{throw Object.assign(new Error(message),{status});};
 const json=(data,status=200)=>new Response(JSON.stringify(data),{status,headers:{"Content-Type":"application/json; charset=utf-8","Cache-Control":"no-store","X-Content-Type-Options":"nosniff"}});
 const parse=s=>s?JSON.parse(s):null;
 const key=s=>s.normalize("NFKC").trim().replace(/\s+/g," ").toLocaleLowerCase("en");
-function targets(env){const n=Number(env.SCORED_PER_ROUND??6);if(!Number.isInteger(n)||n<1||n>10)fail(503,"출제 비율 설정을 확인하세요.");return {scored:n,total:10};}
-function pub(u){return u?{id:u.id,nickname:u.nickname,country:u.country,university:u.university,profile_complete:!!u.consent_at}:null;}
+function targets(env){const n=Number(env.SCORED_PER_ROUND??3);if(!Number.isInteger(n)||n<1||n>10)fail(503,"출제 비율 설정을 확인하세요.");return {scored:n,total:10};}
+function pub(u){return u?{id:u.id,nickname:u.nickname,country:u.country,university:u.university,profile_complete:!!u.consent_at,feedback_plan:u.feedback_plan||"free"}:null;}
 async function body(req){
  if(Number(req.headers.get("Content-Length"))>65536)fail(413,"요청이 너무 큽니다.");
  const reader=req.body?.getReader(),chunks=[];let size=0;
@@ -24,32 +24,33 @@ async function getRound(db,rid,uid){
  let result=null;
  if(r.state==="complete"){
  const details=results.map(c=>({id:c.case_id,position:c.position,scored:c.kind==="verified",grade:parse(c.grade_json),reference:c.kind==="verified"?parse(c.reference_json):null,reference_version:c.reference_version,explanation:c.kind==="verified"?c.explanation:null}));
- result={...Game.summary(details),details};
+ result=r.rule_version===Game.version?{...Game.summary(details),details}:{...Game.legacySummary(details),score:null,legacy:true,details};
  }
- return {id:r.id,state:r.state,scored_target:r.scored_target,total_target:r.total_target,rule_version:r.rule_version,country:r.country,university:r.university,items,result};
+ return {id:r.id,state:r.state,feedback_mode:r.feedback_mode||"free",scored_target:r.scored_target,total_target:r.total_target,rule_version:r.rule_version,country:r.country,university:r.university,items,result};
 }
 async function startRound(db,u,env){
  const existing=await query(db,"SELECT id FROM game_rounds WHERE user_id=? AND state='active'",u.id).first();
  if(existing)return getRound(db,existing.id,u.id);
- const {scored,total}=targets(env);
+ const {total}=targets(env),scored=u.feedback_plan==="full"?total:targets(env).scored;
+ const threshold=Number(env.TRAINING_MIN_SCORE??50);if(!Number.isFinite(threshold)||threshold<0||threshold>100)fail(503,"출제 비율 설정을 확인하세요.");
  attempt: for(let retry=0;retry<3;retry++){
  const rows=[];
  for(const [kind,n] of [["verified",scored],["unscored",total-scored]]){
  if(!n)continue;
- const {results}=await query(db,`SELECT c.* FROM game_cases c WHERE c.active=1 AND c.kind=? AND NOT EXISTS(SELECT 1 FROM game_round_cases rc WHERE rc.case_id=c.id AND rc.user_id=?) AND (c.kind='verified' OR (SELECT COUNT(*) FROM game_claims cl WHERE cl.case_id=c.id)<3) ORDER BY RANDOM() LIMIT ?`,kind,u.id,n).all();
+ const {results}=await query(db,`SELECT c.* FROM game_cases c WHERE c.active=1 AND c.kind=? AND NOT EXISTS(SELECT 1 FROM game_round_cases rc WHERE rc.case_id=c.id AND rc.user_id=?) AND (c.kind='verified' OR NOT EXISTS(SELECT 1 FROM game_claims cl WHERE cl.case_id=c.id)) ORDER BY RANDOM() LIMIT ?`,kind,u.id,n).all();
  if(results.length<n)fail(409,"아직 풀지 않은 검증 문제와 도전 문제가 충분하지 않습니다. 새 문제를 준비하고 있습니다.");
  rows.push(...results);
  }
+ if(!rows.some(c=>c.kind==="verified"&&parse(c.reference_json)?.length))fail(409,"채점 세트에 정답 병소가 있는 영상이 필요합니다.");
  // Random order; do not disclose which cases are graded until all ten are submitted.
  for(let i=rows.length-1;i>0;i--){const a=new Uint32Array(1);crypto.getRandomValues(a);const j=a[0]%(i+1);[rows[i],rows[j]]=[rows[j],rows[i]];}
  const rid=crypto.randomUUID();
- const statements=[query(db,"INSERT INTO game_rounds(id,user_id,scored_target,total_target,rule_version,country,university,university_key,created_at) VALUES(?,?,?,?,?,?,?,?,?)",rid,u.id,scored,total,Game.version,u.country,u.university,u.university_key,Auth.now())];
+ const statements=[query(db,"INSERT INTO game_rounds(id,user_id,scored_target,total_target,rule_version,country,university,university_key,created_at,feedback_mode,quality_threshold) VALUES(?,?,?,?,?,?,?,?,?,?,?)",rid,u.id,scored,total,Game.version,u.country,u.university,u.university_key,Auth.now(),u.feedback_plan==="full"?"full":"free",threshold)];
  for(let i=0;i<rows.length;i++){
  const c=rows[i];
  statements.push(query(db,"INSERT INTO game_round_cases(round_id,case_id,user_id,position,kind,reference_json,reference_version,explanation) VALUES(?,?,?,?,?,?,?,?)",rid,c.id,u.id,i,c.kind,c.reference_json,c.reference_version,c.explanation));
  if(c.kind==="unscored"){
- const {results:claims}=await query(db,"SELECT slot FROM game_claims WHERE case_id=?",c.id).all();const slots=new Set(claims.map(x=>x.slot));const slot=[0,1,2].find(x=>!slots.has(x));if(slot===undefined){if(retry===2)fail(409,"다른 참가자가 먼저 배정받았습니다. 다시 시작해 주세요.");continue attempt;}
- statements.push(query(db,"INSERT INTO game_claims VALUES(?,?,?,?)",c.id,slot,rid,u.id));
+ statements.push(query(db,"INSERT INTO game_claims VALUES(?,?,?,?)",c.id,0,rid,u.id));
  }
  }
  try{await db.batch(statements);return getRound(db,rid,u.id);}catch(e){const active=await query(db,"SELECT id FROM game_rounds WHERE user_id=? AND state='active'",u.id).first();if(active)return getRound(db,active.id,u.id);if(retry===2)throw e;}
@@ -64,7 +65,7 @@ async function saveCase(req,db,rid,cid,u,submit){
  if(!Number.isInteger(b.revision)||b.revision!==c.revision)fail(409,"다른 창에서 변경된 답이 있습니다. 다시 불러오세요.");
  const boxes=Game.boxes(b.boxes,{...c,scope:parse(c.scope_json)});const answer=JSON.stringify(boxes);
  if(submit){
- const grade=c.kind==="verified"?Game.grade(boxes,parse(c.reference_json),{...c,scope:parse(c.scope_json)}):null;
+ const grade=c.kind==="verified"?(r.rule_version===Game.version?Game.grade:Game.legacyGrade)(boxes,parse(c.reference_json),{...c,scope:parse(c.scope_json)}):null;
  await db.batch([
  query(db,"UPDATE game_round_cases SET submission_json=?,draft_json=?,submitted_at=?,revision=revision+1,grade_json=?,points=? WHERE round_id=? AND case_id=? AND revision=? AND submitted_at IS NULL",answer,answer,Auth.now(),grade?JSON.stringify(grade):null,grade?.points??null,rid,cid,b.revision),
  query(db,"UPDATE game_rounds SET state='complete',completed_at=? WHERE id=? AND (SELECT COUNT(*) FROM game_round_cases WHERE round_id=? AND submitted_at IS NOT NULL)=total_target",Auth.now(),rid,rid)]);
@@ -75,17 +76,25 @@ async function saveCase(req,db,rid,cid,u,submit){
  const s=await query(db,"UPDATE game_round_cases SET draft_json=?,revision=revision+1 WHERE round_id=? AND case_id=? AND revision=? AND submitted_at IS NULL RETURNING revision",answer,rid,cid,b.revision).first();
  if(!s)fail(409,"다른 창에서 변경되었습니다.");return s;
 }
-async function stats(db,uid){return query(db,`SELECT COALESCE(SUM(rc.points),0) points,COUNT(rc.points) scored_count,COUNT(DISTINCT r.id) rounds FROM game_rounds r JOIN game_round_cases rc ON rc.round_id=r.id WHERE r.user_id=? AND r.state='complete'`,uid).first();}
+const roundScores=`WITH round_scores AS (
+ SELECT r.id,r.user_id,r.country,r.university,r.university_key,
+ SUM(json_extract(rc.grade_json,'$.tp')) tp,SUM(json_extract(rc.grade_json,'$.fp')) fp,
+ SUM(json_extract(rc.grade_json,'$.reference_count')) reference_count,
+ 100.0*SUM(json_extract(rc.grade_json,'$.iou_sum'))/
+ (SUM(json_extract(rc.grade_json,'$.reference_count'))+SUM(json_extract(rc.grade_json,'$.fp'))) score
+ FROM game_rounds r JOIN game_round_cases rc ON rc.round_id=r.id
+ WHERE r.state='complete' AND r.rule_version=? AND rc.kind='verified'
+ GROUP BY r.id HAVING SUM(json_extract(rc.grade_json,'$.reference_count'))>0)`;
+async function stats(db,uid){return query(db,roundScores+` SELECT AVG(score) average,COUNT(*) rounds,COALESCE(SUM(tp),0) tp,COALESCE(SUM(fp),0) fp,COALESCE(SUM(reference_count),0) reference_count FROM round_scores WHERE user_id=?`,Game.version,uid).first();}
 async function leaders(db,mode){
  const group=mode==="country"?"r.country":mode==="university"?"r.country,r.university_key":"u.id";
- const name=mode==="country"?"r.country AS name,r.country":mode==="university"?"MIN(r.university) AS name,r.country":"u.nickname AS name,u.country, u.university";
- const {results}=await query(db,`SELECT ${name},SUM(rc.points) AS points,COUNT(rc.points) AS scored_count,COUNT(DISTINCT u.id) AS members,1.0*SUM(rc.points)/COUNT(rc.points) AS average FROM game_rounds r JOIN game_users u ON u.id=r.user_id JOIN game_round_cases rc ON rc.round_id=r.id WHERE r.state='complete' AND rc.points IS NOT NULL GROUP BY ${group} HAVING COUNT(rc.points)>0 ORDER BY average DESC,points DESC,name ASC LIMIT 50`).all();
- return results;
+ const name=mode==="country"?"r.country AS name,r.country":mode==="university"?"MIN(r.university) AS name,r.country":"u.nickname AS name,u.country,u.university";
+ const {results}=await query(db,roundScores+` SELECT ${name},AVG(r.score) average,COUNT(*) rounds,SUM(r.tp) tp,SUM(r.fp) fp,SUM(r.reference_count) reference_count,COUNT(DISTINCT u.id) members FROM round_scores r JOIN game_users u ON u.id=r.user_id GROUP BY ${group} ORDER BY average DESC,rounds DESC,name ASC LIMIT 50`,Game.version).all();return results;
 }
 export async function handle(req,env){
  try{
  const url=new URL(req.url),path=url.pathname;
- if(path==="/api/config")return json({auth_ready:Auth.ready(env),game_ready:!!(env.DB&&env.IMAGES),...targets(env),terms_version:TERMS,rule_version:Game.version});
+ if(path==="/api/config")return json({auth_ready:Auth.ready(env),game_ready:!!(env.DB&&env.IMAGES),...targets(env),terms_version:TERMS,rule_version:Game.version,payments_ready:false});
  if(!env.APP_ORIGIN)fail(503,"서버 연결을 준비하고 있습니다.");
  if(url.origin!==env.APP_ORIGIN)fail(403,"공식 게임 주소에서 접속하세요.");
  if(!["GET","HEAD"].includes(req.method)){

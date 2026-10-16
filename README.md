@@ -5,21 +5,71 @@
 작업 ZIP을 브라우저에서 열고 AI 병소 박스를 사람이 교정하는 도구입니다.
 **기존 ZIP 편집기(`/`)는** 영상·라벨·모델을 웹 서버로 전송하지 않습니다. 모델 실행과 재학습은 기존 Pano 데스크톱에서 합니다.
 
-## Pano League (판독 게임)
+## League of Doctors · 판독 게임
 
-새 게임은 **[pano-9kh.pages.dev/play/](https://pano-9kh.pages.dev/play/)** 에 있습니다.
-Google 로그인, 닉네임·국가·대학, 10장 판독, 자동 저장, 1병소 1점 채점, 개인·국가·대학 순위를 구현했습니다.
-기본 구성은 검증된 6장 + 채점 제외 4장입니다. 평균은 검증된 영상 수로만 나눕니다.
-`SCORED_PER_ROUND`로 1~10장 사이에서 조절합니다. 유료 결제는 아직 없습니다.
+게임: **[pano-9kh.pages.dev/play/](https://pano-9kh.pages.dev/play/)**.
+한국어·영어·일본어를 선택할 수 있으며 랜딩, 프로필, 편집, 결과, 참여 안내에 적용됩니다.
+언어는 브라우저에 저장되고 원본 픽셀 좌표에는 영향을 주지 않습니다.
 
-**현재는 조작 연습과 화면 미리보기를 공개합니다.** 실제 로그인에는 Google OAuth와 D1,
-실제 판독에는 비공개 R2 영상 저장소와 검수된 문제은행을 연결해야 합니다.
-[Google 연결·운영자 설정 안내](https://pano-9kh.pages.dev/play/setup.html)에 정확한 입력값과 남은 작업을 적었습니다.
-Google 콘솔이 로드되지 않아 실제 OAuth 왕복 인증은 확인하지 못했습니다.
+### 채점 v2
 
-게임 답변은 서버에 저장되므로 기존 ZIP 편집기와 저장 방식이 다릅니다.
-게임은 Cloudflare Pages Functions + D1 + R2 기반이며 Vercel에는 API를 별도로 이식해야 합니다.
-문제은행·실제 영상·사용자 정보·비밀키는 이 저장소에 포함하지 않습니다.
+세트당 100점. 정답 종류·위치가 일치하는 박스를 일대일 대응합니다. IoU 0.30 이상에서
+최대 개수 우선, 같은 개수면 전체 IoU 합이 최대인 대응을 사용합니다.
+같은 병소의 대체 정답은 같은 `finding_id`로 묶습니다.
+
+- N = 채점 대상 정답의 서로 다른 병소 총수.
+- TP = 찾은 병소 수, FP = 남은 제출 박스 수(오탐·종류 불일치·중복), FN = N − TP.
+- Q = 대응한 박스들의 IoU 합.
+- **세트 점수 = 100 × Q / (N + FP)**. 0–100 사이이며 N=0이면 점수를 계산하지 않고 순위에서 제외합니다.
+- 재현율 = TP/N, 정밀도 = TP/(TP+FP), 박스 일치도 = Q/TP를 결과에 따로 표시합니다.
+- 음성 영상의 오탐도 세트 FP에 포함됩니다. 미검토 문항은 모든 채점 계산에서 제외합니다.
+- 개인·국가·대학 순위는 완료한 세트 점수 평균입니다. 예전 1병소 1점 기록은 변경하지 않고 새 순위·학습 후보에서 제외합니다.
+
+현재 무료 세트는 **검증 3장 + 미검토 7장**입니다. 시작 안내에는 수치 비율을 강조하지 않고
+일부 문항을 기준으로 채점·피드백한다는 사실을 안내합니다. 개별 정답은 전체 세트 제출 후에만 반환합니다.
+`SCORED_PER_ROUND=3`, `TRAINING_MIN_SCORE=50`입니다.
+미검토 영상은 전역 단독 배정되며, 다른 참가자에게 중복 배정하지 않습니다.
+검증 영상은 참가자 간에 공유하되 같은 계정에 반복 출제하지 않습니다.
+
+무료 세트의 검증 점수가 **50점 이상**일 때만 나머지 답변이 `game_training_candidates`에 포함됩니다.
+문턱값은 세트 시작 시 고정합니다. 후보는 `candidate_needs_review`이며 확정 라벨로 자동 승격하지 않습니다.
+
+향후 유료 권한은 서버의 `feedback_plan='full'`로 구분하며 **새로 시작하는 10장 모두 검증된 세트**에만 적용됩니다.
+진행 중인 무료 세트나 이전 피드백을 바꾸지 않습니다. 브라우저 요청만으로 권한을 변경할 수 없습니다.
+**결제 제공자·결제·권한 발급은 아직 연결 전입니다.** 화면에서도 결제 준비 중으로 안내합니다.
+
+### 실제 Hanoi 문제은행
+
+`F:\pano\league\hanoi-bank\manifest.json`에 비공개 출제 목록을 준비했습니다.
+2026-10-17 기준 검증 28장, 미검토 2,942장입니다. 본인 전체 검토 이력 31장 중 train에 속하고
+현재 모든 소견의 검토가 유효한 자료를 사용합니다. 친구에게 배정된 100장과 평가 자료 795장은 제외했습니다.
+원본 영상 약 8.33 GB는 복사하지 않고 기존 F 드라이브 경로를 참조합니다.
+
+~~~powershell
+. F:\pano\scripts\env.ps1
+Set-Location F:\pano\collab-web
+F:\pano\.venv\Scripts\python.exe -B scripts/prepare-hanoi-bank.py
+node scripts/bank.mjs prepare F:\pano\league\hanoi-bank\manifest.json
+# Cloudflare 인증, D1/R2 연결 및 모든 migration 적용 후:
+node scripts/bank.mjs publish F:\pano\league\hanoi-bank\manifest.json pano-game pano-game-images
+# 완료된 세트 중 기준 통과 답변만 반환:
+node scripts/bank.mjs export-candidates pano-game F:\pano\league\returns\candidates.json
+~~~
+
+업로드 도구는 성공한 R2 객체를 로컬에 기록하여 재개합니다. 영상 업로드가 끝난 다음에만 출제 DB에 등록합니다.
+기존 ID의 정답을 자동 덮어쓰지 않습니다. 재검토한 정답은 새 버전 반영 절차가 필요합니다.
+내보내기는 사용자 닉네임·Google 식별자 없이 내부 작업자 ID와 점수·기준·박스를 보존합니다.
+원본 Pano에 자동 확정/재학습하는 연결은 아직 없으며 검수용 후보 반환 단계입니다.
+
+### 운영 연결 상태
+
+**현재 배포판은 조작 연습과 화면 미리보기입니다.** Google OAuth, 실제 D1/R2 및 문제은행 업로드를 연결해야
+실제 회원의 판독을 받을 수 있습니다. [운영자 설정 안내](https://pano-9kh.pages.dev/play/setup)를 참고하세요.
+2026-10-17 확인 시 Cloudflare CLI도 인증되지 않은 상태여서 실제 자료는 업로드하지 않았습니다.
+새 DB에는 `migrations/`의 0001–0003을 순서대로 적용해야 합니다.
+
+기존 ZIP 편집기와 달리 게임 답변은 서버에 저장됩니다. Cloudflare Pages Functions + D1 + R2 기반이며
+문제은행·환자 영상·정답·사용자 정보·비밀키는 공개 저장소에 포함하지 않습니다.
 
 ## 친구가 하는 일
 
@@ -123,7 +173,7 @@ CSS 좌표·확대 배율·스크롤 위치를 JSON 박스에 넣지 않으며, 
 
 ~~~sh
 node scripts/check.js
-node --test tests/core.test.js tests/game.test.mjs
+node --test tests/core.test.js tests/game.test.mjs tests/i18n.test.js
 ~~~
 
 ZIP 편집기는 dist를 정적 HTTP 서버로 실행합니다. 게임 검증용 `node scripts/game-preview.mjs`는 localhost에서만 동작하는 합성 문제·가짜 계정 서버입니다. `/__qa/start`는 이 로컬 서버에만 존재하며 배포되는 Functions에는 없습니다.

@@ -1,18 +1,18 @@
 <!doctype html>
-<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Pano League · Google 연결 안내</title><link rel="stylesheet" href="play.css"><style>pre{background:#eef0e7;padding:18px;white-space:pre-wrap;overflow-wrap:anywhere;font-size:14px}td,th{padding:10px;text-align:left;vertical-align:top;border-bottom:1px solid #ddd}table{width:100%;overflow-wrap:anywhere}.note{border-left:4px solid #586e51;padding:12px 20px;background:#eef0e7}code{overflow-wrap:anywhere}</style></head>
-<body><header><a class="brand" href="/play/"><b>p.</b> pano LEAGUE</a><a href="/play/">게임으로 돌아가기</a></header><main class="terms">
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>League of Doctors · Google 연결 안내</title><link rel="stylesheet" href="play.css"><style>pre{background:#eef0e7;padding:18px;white-space:pre-wrap;overflow-wrap:anywhere;font-size:14px}td,th{padding:10px;text-align:left;vertical-align:top;border-bottom:1px solid #ddd}table{width:100%;overflow-wrap:anywhere}.note{border-left:4px solid #586e51;padding:12px 20px;background:#eef0e7}code{overflow-wrap:anywhere}</style></head>
+<body><header><a class="brand" href="/play/"><b>p.</b> League of Doctors</a><a href="/play/">게임으로 돌아가기</a></header><main class="terms">
 <p>운영자용 · 2026-10-17</p><h1>Google 로그인 연결하기</h1>
 <p>Google Cloud 콘솔이 다시 열릴 때 아래 순서로 설정하면 됩니다. 현재 게임의 조작 연습은 사용할 수 있지만, 실제 로그인·영상 출제는 아직 연결 전입니다. 콘솔 오류의 원인이 봇 차단인지 확인되지는 않았습니다.</p>
 <div class="note">지금 준비할 것은 Google <strong>클라이언트 ID</strong>와 <strong>클라이언트 보안 비밀</strong>입니다. 비밀값은 Cloudflare에 직접 저장하세요. GitHub, 대화, 공개 파일에는 넣지 않습니다.</div>
 
 <h2>1. Google에서 웹 앱 인증 만들기</h2>
 <ol>
-<li><a href="https://console.cloud.google.com/">Google Cloud 콘솔</a>을 엽니다. 프로젝트를 선택하거나 <strong>Pano League</strong>라는 프로젝트를 만듭니다.</li>
+<li><a href="https://console.cloud.google.com/">Google Cloud 콘솔</a>을 엽니다. 프로젝트를 선택하거나 <strong>League of Doctors</strong>라는 프로젝트를 만듭니다.</li>
 <li><strong>Google Auth Platform</strong>을 엽니다. 메뉴가 다르면 <strong>API 및 서비스 → OAuth 동의 화면</strong>을 찾습니다.</li>
-<li><strong>Branding / 브랜딩</strong>에서 앱 이름 <strong>Pano League</strong>, 본인의 지원 이메일과 개발자 연락처를 입력합니다. 요청되는 도메인 확인·게시 심사는 콘솔 안내에 따라 진행합니다.</li>
+<li><strong>Branding / 브랜딩</strong>에서 앱 이름 <strong>League of Doctors</strong>, 본인의 지원 이메일과 개발자 연락처를 입력합니다. 요청되는 도메인 확인·게시 심사는 콘솔 안내에 따라 진행합니다.</li>
 <li><strong>Audience / 대상</strong>은 외부 사용자용 <strong>External</strong>로 설정합니다. 테스트 사용자 항목이 있으면 우선 본인 Google 계정만 추가해 확인하세요.</li>
 <li><strong>Clients / 클라이언트 → Create client</strong>에서 유형을 <strong>Web application / 웹 애플리케이션</strong>으로 선택합니다.</li>
-<li>이름은 <strong>Pano League Web</strong>, 아래의 리디렉션 URI를 정확히 입력합니다. 경로 끝에 슬래시를 추가하지 마세요.</li>
+<li>이름은 <strong>League of Doctors Web</strong>, 아래의 리디렉션 URI를 정확히 입력합니다. 경로 끝에 슬래시를 추가하지 마세요.</li>
 <li>생성된 <strong>Client ID</strong>와 <strong>Client secret</strong>을 본인만 볼 수 있게 보관합니다. 이 앱의 요청 범위는 <strong>openid</strong> 하나입니다. Drive나 Gmail 권한은 필요하지 않습니다.</li>
 </ol>
 <table><tr><th>항목</th><th>입력값</th></tr>
@@ -30,7 +30,7 @@
 <table><tr><th>이름</th><th>값</th></tr>
 <tr><td><code>GOOGLE_CLIENT_ID</code></td><td>Google에서 받은 Client ID<br>보통 <code>…apps.googleusercontent.com</code> 형태</td></tr>
 <tr><td><code>GOOGLE_CLIENT_SECRET</code></td><td>Google에서 받은 Client secret · <strong>Secret으로 저장</strong></td></tr></table>
-<p>기본 사이트 주소와 비율은 저장소의 <code>wrangler.jsonc</code>에 있습니다. <code>APP_ORIGIN=https://pano-9kh.pages.dev</code>, <code>SCORED_PER_ROUND=6</code>입니다. 주소 끝 슬래시는 없습니다.</p>
+<p>기본 사이트 주소와 비율은 저장소의 <code>wrangler.jsonc</code>에 있습니다. <code>APP_ORIGIN=https://pano-9kh.pages.dev</code>, <code>SCORED_PER_ROUND=3</code>입니다. 주소 끝 슬래시는 없습니다.</p>
 
 <h2>3. 실제 게임을 켜기 위한 저장소 연결</h2>
 <p>Google 인증만 붙여서는 영상과 결과를 저장할 수 없습니다. 다음 단계는 운영자 또는 개발자가 한 번 설정합니다. 아직 Cloudflare에 DB·영상 저장소를 만들지 않았고 실제 영상도 업로드하지 않았습니다.</p>
@@ -58,12 +58,12 @@ node node_modules/wrangler/bin/wrangler.js d1 migrations apply pano-game --remot
 <p>설정을 GitHub에 반영하고 재배포합니다. 비밀값은 GitHub에 넣지 않습니다. 미리보기 배포에 운영 DB와 비밀을 연결하지 말고 별도 테스트 환경을 사용하세요.</p>
 
 <h2>4. 출제 자료는 별도로 준비해야 합니다</h2>
-<p>현재 공개된 것은 <strong>합성 도형 연습</strong>입니다. 기존 라벨의 일부만 있는 영상을 자동으로 ‘모든 병소의 정답’으로 바꾸지 않습니다. 기본 6:4 라운드를 실제로 열려면 적어도 검증 영상 6장과 채점 제외 영상 4장이 필요하고, 반복 없이 여러 라운드를 제공하려면 더 많은 자료가 필요합니다.</p>
+<p>현재 공개된 것은 <strong>합성 도형 연습</strong>입니다. 기존 라벨의 일부만 있는 영상을 자동으로 ‘모든 병소의 정답’으로 바꾸지 않습니다. 기본 3:7 라운드를 실제로 열려면 적어도 검증 영상 3장과 미검토 영상 7장이 필요하고, 반복 없이 여러 라운드를 제공하려면 더 많은 자료가 필요합니다.</p>
 <ul>
 <li><strong>검증 영상:</strong> 출제할 소견 범위를 모두 검토한 정답 박스와 해설을 준비합니다. 같은 병소의 충치/깊은 충치 등 대체 정답은 같은 <code>finding_id</code>를 사용해 중복 점수를 막습니다.</li>
 <li><strong>채점 제외 영상:</strong> 정답은 <code>null</code>로 두고 참가자 답을 검수 후보로 수집합니다. 여러 참가자의 일치만으로 자동 확정하거나 바로 재학습시키지 않습니다.</li>
-<li>영상은 PNG 원본 해상도로 R2에 넣고 D1의 <code>game_cases</code>에 원본 크기, 출처, 라이선스, 범위, 정답 버전, 검수자를 등록합니다. 업로드·문제은행 관리 화면과 기존 Pano로 돌아오는 자동 재학습 연결은 아직 없습니다.</li>
-<li>본인에게 이미 배정한 영상은 다시 출제하지 않습니다. 채점 제외 영상은 검수를 위해 최대 3명에게 독립 배정합니다. 아직 끝내지 않은 배정의 자동 만료·회수는 구현 전입니다.</li>
+<li>영상은 PNG 원본 해상도로 R2에 넣고 D1의 <code>game_cases</code>에 원본 크기, 출처, 라이선스, 범위, 정답 버전, 검수자를 등록합니다. 명령줄 업로드 도구를 제공합니다. 문제은행 관리 화면과 기존 Pano로 돌아오는 자동 재학습 연결은 아직 없습니다.</li>
+<li>본인에게 이미 배정한 영상은 다시 출제하지 않습니다. 채점 제외 영상은 검수를 위해 한 명에게만 배정합니다. 아직 끝내지 않은 배정의 자동 만료·회수는 구현 전입니다.</li>
 <li>고정 모델 시험 세트와 친구에게 이미 보낸 작업은 문제은행 후보에서 제외합니다. 환자 정보·사용권·출처 표시는 영상별로 확인합니다.</li>
 </ul>
 <p>게임 답변은 <code>game_round_cases.submission_json</code>에 원본 픽셀의 <code>[x1,y1,x2,y2]</code> 좌표로 저장됩니다. <code>submitted_at</code>, <code>kind</code>, <code>reference_version</code>, <code>grade_json</code>을 함께 보존하여 이후 검수·학습 버전을 만들 수 있습니다. 검증되지 않은 참가자 답을 정밀 윤곽 라벨로 취급하지 않습니다.</p>
@@ -72,7 +72,7 @@ node node_modules/wrangler/bin/wrangler.js d1 migrations apply pano-game --remot
 <ol><li>게임에서 <strong>Google 로그인</strong> → Google 계정 선택 → 사이트 복귀가 되는지 확인합니다.</li>
 <li>닉네임·국가·대학을 저장합니다. 첫 라운드 후 국가·대학은 고정됩니다.</li>
 <li>검증용 문제은행으로 박스를 그리고 <strong>서버에 저장됨</strong>을 확인한 후 새로고침해 복구되는지 봅니다.</li>
-<li>10장 제출 후 6장만 채점되고 나머지 4장은 채점 제외인지, 평균 분모가 6인지 확인합니다.</li>
+<li>10장 제출 후 검증 3장의 전체 병소 수·박스 일치·오탐으로 100점 채점되는지 확인합니다.</li>
 <li>개인·국가·대학 순위에 동일한 점수 집계가 반영되는지 확인합니다. 실제 Google 인증과 Cloudflare DB 통합 검증은 연결 후 수행해야 합니다.</li></ol>
 <h2>오류가 나오면</h2>
 <ul><li><strong>콘솔 자체가 로드되지 않음:</strong> 시간이 지난 뒤 일반 브라우저에서 다시 확인하세요. 현재 원인은 확인되지 않았습니다.</li>
@@ -80,8 +80,13 @@ node node_modules/wrangler/bin/wrangler.js d1 migrations apply pano-game --remot
 <li><strong>액세스 차단:</strong> 테스트 사용자·Audience·게시 상태와 콘솔이 요구하는 확인 사항을 확인합니다.</li>
 <li><strong>연결 준비 중:</strong> 두 Google 변수, D1 바인딩 이름 <code>DB</code>, 테이블 생성, 재배포를 확인합니다.</li>
 <li><strong>새 문제를 준비하고 있습니다:</strong> 로그인 실패가 아니라 출제 가능한 검증/도전 영상 수가 부족한 상태입니다.</li></ul>
-<h2>6:4 및 유료 세트에 대한 현재 결정</h2>
-<p>6:4는 효과가 검증된 비율이 아닌 초기값입니다. 시작 전에 ‘6장 상세 채점 + 4장 데이터 기여’를 안내합니다. 유료 기능을 만든다면 <strong>처음부터 10장 모두 정답과 해설이 있는 별도 세트</strong>로 구성하는 편이 명확합니다. 이미 푼 미검증 4장의 정답을 결제하면 공개하는 것처럼 안내하지 않습니다. 이번 버전에는 결제가 없고 출제 비율은 바꿀 수 있습니다.</p>
+<h2>무료·유료 피드백 운영</h2>
+<p>무료 세트는 검증용 3장과 미검토 7장입니다. 시작 팝업에는 일부 문항 기준 채점과 제한된 상세 피드백을 안내합니다. 유료 전체 피드백은 전환 이후 시작한 검증 10장 세트에만 적용할 예정이며 현재 결제는 연결 전입니다. 판독 기준은 재현율·박스 겹침·오탐입니다. 학습 후보 통과 기준은 50점으로 설정했으며 후보를 자동 확정하지 않습니다.</p>
+<h2>Hanoi 문제은행 연결</h2><p>검증 28장과 미검토 2,942장의 비공개 목록을 F:\pano\league\hanoi-bank에 준비했습니다. 친구 배정 100장과 평가 자료를 제외했습니다. 원본 약 8.33 GB는 기존 경로를 참조하며 실제 업로드 전입니다.</p>
+<pre>node node_modules/wrangler/bin/wrangler.js d1 migrations apply pano-game --remote
+node scripts/bank.mjs publish F:\pano\league\hanoi-bank\manifest.json pano-game pano-game-images
+node scripts/bank.mjs export-candidates pano-game F:\pano\league\returns\candidates.json</pre>
+<p>위 명령은 Cloudflare 로그인·비공개 버킷·DB 연결 후 실행합니다. 0001–0003 마이그레이션을 모두 적용하세요. 업로드 중 중단해도 완료한 영상 기록에서 재개합니다. 답변 내보내기는 검증 점수가 해당 세트의 기준(기본 50점) 이상인 학습 후보만 포함합니다.</p>
 <p>현재 자동 검증은 공통 좌표·채점, 정답 사전 노출 방지, 서버 저장·재시도, 계정별 접근, 집계 등을 포함합니다. 브라우저에서는 박스 편집→복구→10장 제출→결과를 합성 자료로 확인했습니다. IoU 0.30은 초기 위치 일치 규칙이며 실제 판독 평가용으로 검증된 기준이 아닙니다.</p>
 <p>공식 참고: <a href="https://developers.google.com/identity/openid-connect/openid-connect">Google OpenID Connect</a> · <a href="https://developers.cloudflare.com/pages/functions/bindings/">Cloudflare 바인딩</a> · <a href="https://developers.cloudflare.com/pages/functions/wrangler-configuration/">Pages 설정 파일</a></p>
 </main></body></html>
