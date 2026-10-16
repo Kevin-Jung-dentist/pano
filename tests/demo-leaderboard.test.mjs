@@ -37,7 +37,7 @@ test('rename persists and stale or invalid edits preserve the saved nickname',as
  for(const nickname of ['x','x'.repeat(25),'<script>','bad\u202Ename'])assert.equal((await handle(h.req('admin/demos/demo-01/rename',{nickname,revision:1}),h.env)).status,400);
  assert.equal((await handle(h.req('admin/demos/demo-01/delete',{revision:0}),h.env)).status,409);
  assert.equal((await read()).nickname,'새이름É');assert.deepEqual(state(h),before);
- const ranks=await (await handle(h.req('leaderboard'),h.env)).json();assert.ok(ranks.demo_entries.some(x=>x.name==='새이름É'&&x.is_demo));
+ const ranks=await (await handle(h.req('leaderboard'),h.env)).json();assert.ok(ranks.demo_entries.some(x=>x.name==='새***É'&&x.is_demo));
 });
 test('individual and bulk deletion remove only demo rows, remain deleted, and cannot target real user ids',async()=>{
  const h=await harness();grant(h);
@@ -62,7 +62,7 @@ test('administrator can create, retry without duplication, rename and delete a n
  assert.equal((await handle(h.req('admin/demos',{...input,average:44}),h.env)).status,409);
  const list=await (await handle(h.req('admin/demos'),h.env)).json();assert.equal(list.entries.find(x=>x.id==='demo-'+input.request_id).average,87.5);
  assert.equal((await handle(h.req(`admin/demos/demo-${input.request_id}/rename`,{nickname:'NewName',revision:0}),h.env)).status,200);
- assert.ok((await (await handle(h.req('leaderboard'),h.env)).json()).demo_entries.some(x=>x.name==='NewName'));
+ assert.ok((await (await handle(h.req('leaderboard'),h.env)).json()).demo_entries.some(x=>x.name==='Ne***me'));
  assert.equal((await handle(h.req(`admin/demos/demo-${input.request_id}/delete`,{revision:1}),h.env)).status,200);assert.equal(count(h,'game_demo_leaders'),24);
 });
 test('creation rejects invalid fields and foreign origins without any insertion',async()=>{

@@ -1,5 +1,6 @@
 // Fictional leaderboard rows have no sessions, answers, payments or training records.
 import Game from "../dist/game-core.js";
+import {publicEntries,PUBLIC_RANK_LIMIT} from "./public-ranking.mjs";
 const error=(status,message)=>{throw Object.assign(new Error(message),{status});};
 function nickname(value){
  const text=typeof value==="string"?value.normalize("NFKC").trim().replace(/\s+/g," "):"";
@@ -13,8 +14,8 @@ export async function list(db,mode){
  mode==="country"?
  "SELECT country AS name,country,SUM(average*rounds)/SUM(rounds) AS average,SUM(rounds) AS rounds,COUNT(*) AS members FROM game_demo_leaders GROUP BY country":
  "SELECT university AS name,country,SUM(average*rounds)/SUM(rounds) AS average,SUM(rounds) AS rounds,COUNT(*) AS members FROM game_demo_leaders GROUP BY country,university";
- const {results}=await db.prepare(sql+" ORDER BY average DESC,rounds DESC,name ASC LIMIT 50").all();
- return results.map(r=>({...r,is_demo:true}));
+ const {results}=await db.prepare(sql+` ORDER BY average DESC,rounds DESC,name ASC LIMIT ${PUBLIC_RANK_LIMIT}`).all();
+ return publicEntries(results,mode).map(r=>({...r,is_demo:true}));
 }
 export async function manage(db,path,method,readBody){
  if(path==="/api/admin/demos"&&method==="GET")return {entries:(await db.prepare("SELECT * FROM game_demo_leaders ORDER BY average DESC,id").all()).results};

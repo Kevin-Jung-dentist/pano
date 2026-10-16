@@ -281,5 +281,6 @@ LoDLocales.ko={
   "createDemo": "기록 추가",
   "demoCreated": "데모 기록을 추가했습니다. 아래에서 다른 기록을 추가하거나 목록으로 돌아갈 수 있습니다.",
   "demoRetryCreate": "저장 결과 확인·재시도",
-  "demoRetryOriginal": "먼저 같은 입력으로 저장을 재시도해 결과를 확인하세요."
+  "demoRetryOriginal": "먼저 같은 입력으로 저장을 재시도해 결과를 확인하세요.",
+  "rankMore": "더 보기"
 };

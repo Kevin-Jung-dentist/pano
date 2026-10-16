@@ -281,5 +281,6 @@ LoDLocales.en={
   "createDemo": "Add record",
   "demoCreated": "Demo record added. Add another below or return to the list.",
   "demoRetryCreate": "Check save / retry",
-  "demoRetryOriginal": "Retry the same input first to confirm whether it was saved."
+  "demoRetryOriginal": "Retry the same input first to confirm whether it was saved.",
+  "rankMore": "Show more"
 };

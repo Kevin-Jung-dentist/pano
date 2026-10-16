@@ -84,11 +84,15 @@ async function showResults(scroll=true){
 }
 let rankRequest=0;
 async function leaderboard(){
- const request=++rankRequest,selected=group;$("ranks").replaceChildren();
+ const request=++rankRequest,selected=group;$("ranks").replaceChildren();$("rank-more").hidden=true;
  try{const data=await api("leaderboard?group="+selected);if(request!==rankRequest)return;
  const countries=new Intl.DisplayNames([I.language],{type:"region"});
  const entries=LoDRanking.entries(data,selected);
- entries.forEach((r,i)=>{
+ let shown=0;
+ function appendPage(){
+ const end=Math.min(shown+50,entries.length);
+ entries.slice(shown,end).forEach((r,offset)=>{
+  const i=shown+offset;
   const row=document.createElement("tr");
   const name=selected==="country"?countries.of(r.country):r.name;
   for(const [col,v] of [i+1,name,I.percent(r.average===null?null:r.average/100),I.number(r.rounds,0),I.number(r.members,0)].entries()){
@@ -97,6 +101,9 @@ async function leaderboard(){
    row.append(cell);
   }$("ranks").append(row);
  });
+ shown=end;$("rank-more").hidden=shown>=entries.length;
+ }
+ $("rank-more").onclick=appendPage;appendPage();
  if(!entries.length)rankMessage("emptyRank");
  }catch{if(request===rankRequest)rankMessage("rankFailed");}
 }

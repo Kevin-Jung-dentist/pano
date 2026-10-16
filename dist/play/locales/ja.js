@@ -281,5 +281,6 @@ LoDLocales.ja={
   "createDemo": "記録を追加",
   "demoCreated": "デモ記録を追加しました。続けて追加するか一覧に戻れます。",
   "demoRetryCreate": "保存結果確認・再試行",
-  "demoRetryOriginal": "同じ入力で再試行し、保存結果を確認してください。"
+  "demoRetryOriginal": "同じ入力で再試行し、保存結果を確認してください。",
+  "rankMore": "もっと見る"
 };

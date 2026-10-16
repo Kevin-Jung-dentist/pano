@@ -281,5 +281,6 @@ LoDLocales.zh={
   "createDemo": "添加记录",
   "demoCreated": "演示记录已添加。可继续添加或返回列表。",
   "demoRetryCreate": "检查保存／重试",
-  "demoRetryOriginal": "请先用相同输入重试，以确认是否已保存。"
+  "demoRetryOriginal": "请先用相同输入重试，以确认是否已保存。",
+  "rankMore": "显示更多"
 };

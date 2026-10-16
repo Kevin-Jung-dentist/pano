@@ -281,5 +281,6 @@ LoDLocales.es={
   "createDemo": "Añadir registro",
   "demoCreated": "Registro demo añadido. Añade otro o vuelve a la lista.",
   "demoRetryCreate": "Comprobar / reintentar",
-  "demoRetryOriginal": "Reintenta con los mismos datos para confirmar el guardado."
+  "demoRetryOriginal": "Reintenta con los mismos datos para confirmar el guardado.",
+  "rankMore": "Mostrar más"
 };

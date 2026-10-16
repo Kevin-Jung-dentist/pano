@@ -281,5 +281,6 @@ LoDLocales.fr={
   "createDemo": "Ajouter le record",
   "demoCreated": "Démonstration ajoutée. Ajoutez-en une autre ou revenez à la liste.",
   "demoRetryCreate": "Vérifier / réessayer",
-  "demoRetryOriginal": "Réessayez avec les mêmes données pour confirmer l’enregistrement."
+  "demoRetryOriginal": "Réessayez avec les mêmes données pour confirmer l’enregistrement.",
+  "rankMore": "Afficher plus"
 };

@@ -2,6 +2,7 @@ import Game from "../dist/game-core.js";
 import * as Auth from "./auth.mjs";
 import * as Payments from "./payments.mjs";
 import * as Demo from "./demo-leaderboard.mjs";
+import {publicEntries,PUBLIC_RANK_LIMIT} from "./public-ranking.mjs";
 const TERMS="2026-10-17-v2";
 const fail=(status,message)=>{throw Object.assign(new Error(message),{status});};
 const json=(data,status=200)=>new Response(JSON.stringify(data),{status,headers:{"Content-Type":"application/json; charset=utf-8","Cache-Control":"no-store","X-Content-Type-Options":"nosniff"}});
@@ -122,7 +123,7 @@ async function stats(db,uid){return query(db,roundScores+` SELECT AVG(score) ave
 async function leaders(db,mode){
  const group=mode==="country"?"r.country":mode==="university"?"r.country,r.university_key":"u.id";
  const name=mode==="country"?"r.country AS name,r.country":mode==="university"?"MIN(r.university) AS name,r.country":"u.nickname AS name,u.country,u.university";
- const {results}=await query(db,roundScores+` SELECT ${name},AVG(r.score) average,COUNT(*) rounds,COUNT(DISTINCT u.id) members FROM round_scores r JOIN game_users u ON u.id=r.user_id WHERE NOT EXISTS(SELECT 1 FROM game_admins admin WHERE admin.user_id=u.id) GROUP BY ${group} ORDER BY average DESC,rounds DESC,name ASC LIMIT 50`,Game.version).all();return results;
+ const {results}=await query(db,roundScores+` SELECT ${name},AVG(r.score) average,COUNT(*) rounds,COUNT(DISTINCT u.id) members FROM round_scores r JOIN game_users u ON u.id=r.user_id WHERE NOT EXISTS(SELECT 1 FROM game_admins admin WHERE admin.user_id=u.id) GROUP BY ${group} ORDER BY average DESC,rounds DESC,name ASC LIMIT ${PUBLIC_RANK_LIMIT}`,Game.version).all();return publicEntries(results,mode);
 }
 async function bankReady(env){
  if(!env.DB||(!env.IMAGES&&!env.IMAGE_SERVICE))return false;

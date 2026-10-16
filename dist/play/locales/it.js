@@ -281,5 +281,6 @@ LoDLocales.it={
   "createDemo": "Aggiungi record",
   "demoCreated": "Record demo aggiunto. Aggiungine un altro o torna all’elenco.",
   "demoRetryCreate": "Verifica / riprova",
-  "demoRetryOriginal": "Riprova con gli stessi dati per confermare il salvataggio."
+  "demoRetryOriginal": "Riprova con gli stessi dati per confermare il salvataggio.",
+  "rankMore": "Mostra altri"
 };
