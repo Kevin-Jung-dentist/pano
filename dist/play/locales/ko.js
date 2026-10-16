@@ -1,5 +1,10 @@
 globalThis.LoDLocales=globalThis.LoDLocales||{};
 LoDLocales.ko={
+  "historyTitle": "내 판독 기록",
+  "historyResult": "채점 결과 다시 보기",
+  "historyResume": "이어 풀기 · {n}/{total} 제출",
+  "historyFailed": "판독 기록을 불러오지 못했습니다. 새로고침해 주세요.",
+
   "title": "League of Doctors · 판독으로 경쟁하다",
   "description": "정확한 병소 발견과 박스 위치로 도전하는 치과 판독 리그. 세트당 100점.",
   "language": "언어",

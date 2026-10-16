@@ -1,5 +1,10 @@
 globalThis.LoDLocales=globalThis.LoDLocales||{};
 LoDLocales.ja={
+  "historyTitle": "自分の読影履歴",
+  "historyResult": "採点結果を見る",
+  "historyResume": "続きから · {n}/{total} 提出済み",
+  "historyFailed": "履歴を読み込めませんでした。再読み込みしてください。",
+
   "title": "League of Doctors · 読影で競う",
   "description": "病変の発見と正確なボックスで挑む歯科読影リーグ。1セット100点満点。",
   "language": "言語",

@@ -29,6 +29,7 @@ async function getRound(db,rid,uid){
  return {id:r.id,state:r.state,feedback_mode:r.feedback_mode||"free",scored_target:r.scored_target,total_target:r.total_target,rule_version:r.rule_version,country:r.country,university:r.university,items,result};
 }
 async function startRound(db,u,env){
+ if(!env.IMAGES&&!env.IMAGE_SERVICE)fail(503,"영상 저장소를 연결하지 않았습니다.");
  const existing=await query(db,"SELECT id FROM game_rounds WHERE user_id=? AND state='active'",u.id).first();
  if(existing)return getRound(db,existing.id,u.id);
  const {total}=targets(env),scored=u.feedback_plan==="full"?total:targets(env).scored;
@@ -91,10 +92,25 @@ async function leaders(db,mode){
  const name=mode==="country"?"r.country AS name,r.country":mode==="university"?"MIN(r.university) AS name,r.country":"u.nickname AS name,u.country,u.university";
  const {results}=await query(db,roundScores+` SELECT ${name},AVG(r.score) average,COUNT(*) rounds,SUM(r.tp) tp,SUM(r.fp) fp,SUM(r.reference_count) reference_count,COUNT(DISTINCT u.id) members FROM round_scores r JOIN game_users u ON u.id=r.user_id GROUP BY ${group} ORDER BY average DESC,rounds DESC,name ASC LIMIT 50`,Game.version).all();return results;
 }
+async function bankReady(env){
+ if(!env.DB||(!env.IMAGES&&!env.IMAGE_SERVICE))return false;
+ const {scored,total}=targets(env);
+ for(const [kind,n] of [["verified",scored],["unscored",total-scored]]){
+  const found=await query(env.DB,"SELECT COUNT(*) n FROM (SELECT id FROM game_cases WHERE active=1 AND kind=? LIMIT ?)",kind,n).first();
+  if(found.n<n)return false;
+ }
+ return true;
+}
+async function history(db,uid){
+ const {results}=await query(db,`SELECT r.id,r.state,r.created_at,r.completed_at,r.total_target,
+  (SELECT COUNT(*) FROM game_round_cases rc WHERE rc.round_id=r.id AND rc.submitted_at IS NOT NULL) submitted
+  FROM game_rounds r WHERE r.user_id=? ORDER BY r.created_at DESC,r.id DESC LIMIT 20`,uid).all();
+ return results;
+}
 export async function handle(req,env){
  try{
  const url=new URL(req.url),path=url.pathname;
- if(path==="/api/config")return json({auth_ready:Auth.ready(env),game_ready:!!(env.DB&&env.IMAGES),...targets(env),terms_version:TERMS,rule_version:Game.version,payments_ready:false});
+ if(path==="/api/config")return json({auth_ready:Auth.ready(env),game_ready:await bankReady(env),...targets(env),terms_version:TERMS,rule_version:Game.version,payments_ready:false});
  if(!env.APP_ORIGIN)fail(503,"서버 연결을 준비하고 있습니다.");
  if(url.origin!==env.APP_ORIGIN)fail(403,"공식 게임 주소에서 접속하세요.");
  if(!["GET","HEAD"].includes(req.method)){
@@ -104,6 +120,7 @@ export async function handle(req,env){
  if(path==="/api/auth/callback"&&req.method==="GET"){if(!Auth.ready(env))fail(503,"Google 로그인 연결을 준비하고 있습니다.");try{return await Auth.callback(req,env);}catch{return new Response(null,{status:302,headers:{Location:env.APP_ORIGIN+"/play/?login=failed","Cache-Control":"no-store"}});}}
  if(path==="/api/me"&&req.method==="GET"){const u=env.DB?await Auth.session(req,env):null;return json({user:pub(u),stats:u?await stats(env.DB,u.id):null});}
  if(path==="/api/leaderboard"&&req.method==="GET"){if(!env.DB)return json({entries:[]});const mode=url.searchParams.get("group")||"individual";if(!["individual","country","university"].includes(mode))fail(400,"순위 범위 오류");return json({entries:await leaders(env.DB,mode)});}
+ if(/^\/api\/images\/[a-zA-Z0-9_-]+$/.test(path)&&req.method==="GET"&&env.IMAGE_SERVICE)return await env.IMAGE_SERVICE.fetch(req);
  const u=await user(req,env,false),db=env.DB;
  if(path==="/api/logout"&&req.method==="POST"){await query(db,"DELETE FROM game_sessions WHERE token_hash=?",await Auth.digest(Auth.cookie(req,Auth.cookieName(env)))).run();const res=json({ok:true});res.headers.set("Set-Cookie",Auth.setCookie(Auth.cookieName(env),"",0,env));return res;}
  if(path==="/api/profile"&&req.method==="POST"){
@@ -124,6 +141,7 @@ export async function handle(req,env){
  const res=json({ok:true});res.headers.set("Set-Cookie",Auth.setCookie(Auth.cookieName(env),"",0,env));return res;
  }
  if(!u.consent_at)fail(409,"프로필 설정을 먼저 완료하세요.");
+ if(path==="/api/rounds"&&req.method==="GET")return json({rounds:await history(db,u.id)});
  if(path==="/api/rounds"&&req.method==="POST")return json(await startRound(db,u,env));
  const rid=path.match(/^\/api\/rounds\/([a-zA-Z0-9-]+)$/);
  if(rid&&req.method==="GET")return json(await getRound(db,rid[1],u.id));

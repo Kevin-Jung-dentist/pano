@@ -21,9 +21,19 @@ function renderAnswers(){
  $("remove-box").disabled=!editor.selected||submitting;
 }
 function accountLabels(){$("account").hidden=!me;$("account").textContent=me?.nickname||t("profile");$("login-top").hidden=!!me;$("start").textContent=t(me?"start":"startLogin");}
-async function refreshMe(){me=(await api("me")).user;accountLabels();}
+async function refreshMe(){me=(await api("me")).user;accountLabels();await loadHistory();}
 function fillProfile(){if(!me)return;panel("profile-panel");$("nickname").value=me.nickname||"";$("country").value=me.country||"";$("university").value=me.university||"";$("terms").checked=me.profile_complete;}
-async function begin(){await saving;notice("");$("confirm-start").textContent=t(me?.feedback_plan==="full"?"beginFull":"beginFree");$("before-start").showModal();}
+async function loadHistory(){
+ $("history-panel").hidden=true;$("history-list").replaceChildren();if(!me?.profile_complete)return;
+ try{const data=await api("rounds");$("history-panel").hidden=!data.rounds.length;
+ for(const item of data.rounds){const row=document.createElement("button");row.className="history-row";
+ const date=new Date(item.created_at*1000).toLocaleString(I.language);
+ row.textContent=date+" · "+t(item.state==="complete"?"historyResult":"historyResume",{n:item.submitted,total:item.total_target});
+ row.onclick=async()=>{await saving;if(dirty){notice(t("unsaved"));return;}row.disabled=true;try{notice("");practice=false;saveError=null;round=await api("rounds/"+item.id);await showNext();}catch(e){notice(e.message);}finally{row.disabled=false;}};
+ $("history-list").append(row);}
+ }catch{notice(t("historyFailed"));}
+}
+async function begin(){await saving;if(dirty){notice(t("unsaved"));return;}notice("");$("confirm-start").textContent=t(me?.feedback_plan==="full"?"beginFull":"beginFree");$("before-start").showModal();}
 async function launch(){
  $("before-start").close();
  if(!me){if(!config.auth_ready){notice(t("notReady"));return;}location.assign("/api/auth/start");return;}
@@ -57,6 +67,7 @@ function renderReference(item,detail,host){
  };img.onerror=()=>host.append(document.createTextNode(t("compareFailed")));img.src=item.image_url;
 }
 async function showResults(scroll=true){
+ if(!practice)await loadHistory();
  if(scroll)panel("results-panel");if(practice){showPracticeResults();await leaderboard();return;}document.querySelector("#results-panel [data-i18n=resultTitle]").textContent=t("resultTitle");document.querySelector(".main-score span").textContent=t("outOf");document.querySelector(".score-cards").hidden=false;$("result-rank").hidden=false;$("another").textContent=t("nextSet");const r=round.result;$("total-score").textContent=I.number(r.score);$("metric-recall").textContent=I.percent(r.recall);$("metric-iou").textContent=I.percent(r.mean_iou);$("metric-precision").textContent=I.percent(r.precision);$("metric-fp").textContent=r.fp??"—";$("reference-count").textContent=t("referenceCount")+": "+(r.reference_count??"—");
  $("result-note").textContent=r.legacy?t("legacy"):r.score===null?t("noReference"):practice?t("practiceResult"):t(round.feedback_mode==="full"?"fullResultNote":"resultNote",{n:r.reference_count});
  $("practice-result").hidden=true;$("premium-results").hidden=practice||round.feedback_mode==="full";$("result-list").replaceChildren();
@@ -103,12 +114,12 @@ $("delete-account").onclick=async()=>{if(!confirm(t("deleteConfirm")))return;awa
 $("finding").onchange=e=>{editor.category=e.target.value;editor.setMode("draw");};$("draw-tool").onclick=()=>editor.setMode("draw");$("select-tool").onclick=()=>editor.setMode("select");$("undo").onclick=()=>editor.undo();$("redo").onclick=()=>editor.redo();$("remove-box").onclick=()=>editor.remove();$("hide-boxes").onclick=()=>editor.toggle();$("fit").onclick=()=>editor.fit();
 $("submit").onclick=()=>{if(!editor.boxes.length)$("confirm-submit").showModal();else submit();};$("skip").onclick=()=>{if(editor.boxes.length){notice(t("hasBoxes"));return;}$("confirm-submit").showModal();};
 $("cancel-empty").onclick=()=>$("confirm-submit").close();$("confirm-empty").onclick=()=>{$("confirm-submit").close();submit();};
-$("exit-game").onclick=async()=>{await saving;if(dirty&&!confirm(t("unsavedExit")))return;panel("landing");notice("");};
+$("exit-game").onclick=async()=>{await saving;if(dirty&&!confirm(t("unsavedExit")))return;panel("landing");await loadHistory();notice("");};
 function rankNav(){panel("landing");$("ranking-panel").scrollIntoView({behavior:"smooth"});leaderboard();}
 $("nav-rank").onclick=rankNav;$("result-rank").onclick=rankNav;
 document.querySelectorAll("[data-group]").forEach(b=>b.onclick=()=>{group=b.dataset.group;document.querySelectorAll("[data-group]").forEach(x=>x.classList.toggle("active",x===b));leaderboard();});
 window.addEventListener("beforeunload",e=>{if(dirty&&!practice){e.preventDefault();e.returnValue="";}});
 function countryOptions(){const old=$("country").value,dn=new Intl.DisplayNames([I.language],{type:"region"});$("country").replaceChildren();const blank=document.createElement("option");blank.value="";blank.textContent=t("select");$("country").append(blank);G.countryCodes.map(c=>({code:c,name:dn.of(c)})).sort((a,b)=>a.name.localeCompare(b.name,I.language)).forEach(c=>{const o=document.createElement("option");o.value=c.code;o.textContent=c.name+" ("+c.code+")";$("country").append(o);});$("country").value=old;}
 function availability(){$("availability").textContent=t(config.auth_ready?(config.game_ready?"ready":"bankPending"):"notReady");}
-document.addEventListener("lod-language",()=>{countryOptions();accountLabels();availability();gameLabels();renderAnswers();notice("");if(round?.state==="complete"&&!$("results-panel").hidden)showResults(false);else leaderboard();});
+document.addEventListener("lod-language",()=>{countryOptions();accountLabels();availability();gameLabels();renderAnswers();notice("");loadHistory();if(round?.state==="complete"&&!$("results-panel").hidden)showResults(false);else leaderboard();});
 (async()=>{countryOptions();availability();try{config=await api("config");availability();if(!config.auth_ready){$("login-top").href="#";$("login-top").onclick=e=>{e.preventDefault();notice(t("notReady"));};}await refreshMe();if(me&&!me.profile_complete)fillProfile();await leaderboard();}catch(e){notice(e.message);}if(new URLSearchParams(location.search).get("login")==="failed")notice(t("loginFailed"));})();

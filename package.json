@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "test": "node --test tests/core.test.js tests/game.test.mjs tests/i18n.test.js",
+    "test": "node --test tests/*.test.*",
     "build": "node scripts/check.js",
     "preview:game": "node scripts/game-preview.mjs"
   },

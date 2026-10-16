@@ -21,6 +21,12 @@
           "database_id": "0146b254-6425-4604-ad93-aaf7022bbf52",
           "migrations_dir": "migrations"
         }
+      ],
+      "services": [
+        {
+          "binding": "IMAGE_SERVICE",
+          "service": "pano-images"
+        }
       ]
     },
     "preview": {
@@ -29,7 +35,8 @@
         "SCORED_PER_ROUND": "3",
         "TRAINING_MIN_SCORE": "50"
       },
-      "d1_databases": []
+      "d1_databases": [],
+      "services": []
     }
   }
 }

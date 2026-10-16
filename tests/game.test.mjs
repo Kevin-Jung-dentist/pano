@@ -137,3 +137,11 @@ test("bank import rejects evaluation images, duplicate groups and incomplete gro
  assert.throws(()=>compileBank({schema:'lod-question-bank-v1',cases:change(0,{quality_reviewed_by:null})}));
  assert.throws(()=>compileBank({schema:'lod-question-bank-v1',cases:change(0,{scope:['caries_ungraded']})}));
 });
+test('round history survives reload without revealing references or another user history',async()=>{
+ const h=await harness();const r=await complete(h,'alice',ref);
+ const list=(await call(h,'rounds')).body.rounds;
+ assert.equal(list.length,1);assert.equal(list[0].state,'complete');assert.equal(list[0].submitted,10);
+ assert.ok(!JSON.stringify(list).includes('reference'));assert.ok(!JSON.stringify(list).includes('finding-a'));
+ assert.equal((await call(h,'rounds',undefined,'bob')).body.rounds.length,0);
+ assert.equal((await call(h,'rounds/'+r.id)).body.result.score,100);
+});

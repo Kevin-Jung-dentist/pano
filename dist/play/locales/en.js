@@ -1,5 +1,10 @@
 globalThis.LoDLocales=globalThis.LoDLocales||{};
 LoDLocales.en={
+  "historyTitle": "Your reading history",
+  "historyResult": "View results",
+  "historyResume": "Resume · {n}/{total} submitted",
+  "historyFailed": "Could not load reading history. Please refresh.",
+
   "title": "League of Doctors · Read. Detect. Compete.",
   "description": "A dental reading league built on accurate findings and precise boxes. Every set is scored out of 100.",
   "language": "Language",
