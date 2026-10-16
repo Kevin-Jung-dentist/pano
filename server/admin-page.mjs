@@ -1,9 +1,20 @@
 import * as Auth from './auth.mjs';
 import {isAdmin} from './demo-leaderboard.mjs';
+import {adminAssets} from './admin-assets.mjs';
 const denied=()=>new Response('Not found',{status:404,headers:{'Content-Type':'text/plain; charset=utf-8','Cache-Control':'private, no-store','X-Robots-Tag':'noindex, nofollow','Vary':'Cookie'}});
+function pathname(request){try{return decodeURIComponent(new URL(request.url).pathname);}catch{return '';}}
+export function adminAssetResponse(request){
+ let path=pathname(request);
+ if(path!=='/admin'&&!path.startsWith('/admin/'))return null;
+ if(!['GET','HEAD'].includes(request.method))return new Response('Method not allowed',{status:405,headers:{Allow:'GET, HEAD'}});
+ if(path==='/admin')path='/admin/';
+ if(path.endsWith('/'))path+='index.html';
+ const asset=adminAssets[path];
+ return asset?new Response(request.method==='HEAD'?null:asset.content,{headers:{'Content-Type':asset.type}}):denied();
+}
 export async function guardAdminPage(request,env,next){
- const url=new URL(request.url);
- if(url.pathname!=='/admin'&&!url.pathname.startsWith('/admin/'))return next();
+ const url=new URL(request.url),path=pathname(request);
+ if(path!=='/admin'&&!path.startsWith('/admin/'))return next();
  try{
   if(!env.DB||!env.APP_ORIGIN||url.origin!==env.APP_ORIGIN)return denied();
   const account=await Auth.session(request,env);

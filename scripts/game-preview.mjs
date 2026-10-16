@@ -5,7 +5,7 @@ import path from "node:path";
 import {fileURLToPath} from "node:url";
 import {harness} from "../tests/game-harness.mjs";
 import {handle} from "../server/api.mjs";
-import {guardAdminPage} from "../server/admin-page.mjs";
+import {guardAdminPage,adminAssetResponse} from "../server/admin-page.mjs";
 import imageWorker from "../server/image-worker.mjs";
 import {compileBank} from "./bank.mjs";
 const h=await harness();
@@ -30,9 +30,10 @@ http.createServer(async(req,res)=>{
  const chunks=[];for await(const chunk of req)chunks.push(chunk);const body=Buffer.concat(chunks);
  const request=new Request(u,{method:req.method,headers:req.headers,body:["GET","HEAD"].includes(req.method)?undefined:body});
  const response=await handle(request,h.env);res.writeHead(response.status,Object.fromEntries(response.headers));res.end(Buffer.from(await response.arrayBuffer()));return;}
- if(u.pathname==="/admin"||u.pathname.startsWith("/admin/")){
-  const check=await guardAdminPage(new Request(u,{headers:req.headers}),h.env,async()=>new Response(null));
-  if(check.status!==200){res.writeHead(check.status,Object.fromEntries(check.headers));res.end(await check.text());return;}
+ if(decodeURIComponent(u.pathname)==="/admin"||decodeURIComponent(u.pathname).startsWith("/admin/")){
+  const request=new Request(u,{method:req.method,headers:req.headers});
+  const check=await guardAdminPage(request,h.env,()=>adminAssetResponse(request));
+  res.writeHead(check.status,Object.fromEntries(check.headers));res.end(await check.text());return;
  }
  const decoded=decodeURIComponent(u.pathname),target=path.resolve(root,"."+decoded+(decoded.endsWith("/")?"index.html":""));
  if(!target.startsWith(root)||!fs.existsSync(target)){res.writeHead(404);res.end("Not found");return;}
