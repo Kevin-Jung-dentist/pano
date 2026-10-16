@@ -114,7 +114,7 @@ $("delete-account").onclick=async()=>{if(!confirm(t("deleteConfirm")))return;awa
 $("finding").onchange=e=>{editor.category=e.target.value;editor.setMode("draw");};$("draw-tool").onclick=()=>editor.setMode("draw");$("select-tool").onclick=()=>editor.setMode("select");$("undo").onclick=()=>editor.undo();$("redo").onclick=()=>editor.redo();$("remove-box").onclick=()=>editor.remove();$("hide-boxes").onclick=()=>editor.toggle();$("fit").onclick=()=>editor.fit();
 $("submit").onclick=()=>{if(!editor.boxes.length)$("confirm-submit").showModal();else submit();};$("skip").onclick=()=>{if(editor.boxes.length){notice(t("hasBoxes"));return;}$("confirm-submit").showModal();};
 $("cancel-empty").onclick=()=>$("confirm-submit").close();$("confirm-empty").onclick=()=>{$("confirm-submit").close();submit();};
-$("exit-game").onclick=async()=>{await saving;if(dirty&&!confirm(t("unsavedExit")))return;panel("landing");await loadHistory();notice("");};
+$("exit-game").onclick=async()=>{await saving;if(dirty){notice(t("unsaved"));return;}panel("landing");await loadHistory();notice("");};
 function rankNav(){panel("landing");$("ranking-panel").scrollIntoView({behavior:"smooth"});leaderboard();}
 $("nav-rank").onclick=rankNav;$("result-rank").onclick=rankNav;
 document.querySelectorAll("[data-group]").forEach(b=>b.onclick=()=>{group=b.dataset.group;document.querySelectorAll("[data-group]").forEach(x=>x.classList.toggle("active",x===b));leaderboard();});
