@@ -24,7 +24,8 @@ async function getRound(db,rid,uid){
  let result=null;
  if(r.state==="complete"){
  const details=results.map(c=>({id:c.case_id,position:c.position,scored:c.kind==="verified",grade:parse(c.grade_json),reference:c.kind==="verified"?parse(c.reference_json):null,reference_version:c.reference_version,explanation:c.kind==="verified"?c.explanation:null}));
- result=r.rule_version===Game.version?{...Game.summary(details),details}:{...Game.legacySummary(details),score:null,legacy:true,details};
+ const current=r.rule_version===Game.version;
+ result={score:current?Game.summary(details).score:null,max_score:100,legacy:!current,details:details.map(({grade,...feedback})=>feedback)};
  }
  return {id:r.id,state:r.state,feedback_mode:r.feedback_mode||"free",scored_target:r.scored_target,total_target:r.total_target,rule_version:r.rule_version,country:r.country,university:r.university,items,result};
 }
@@ -86,11 +87,11 @@ const roundScores=`WITH round_scores AS (
  FROM game_rounds r JOIN game_round_cases rc ON rc.round_id=r.id
  WHERE r.state='complete' AND r.rule_version=? AND rc.kind='verified'
  GROUP BY r.id HAVING SUM(json_extract(rc.grade_json,'$.reference_count'))>0)`;
-async function stats(db,uid){return query(db,roundScores+` SELECT AVG(score) average,COUNT(*) rounds,COALESCE(SUM(tp),0) tp,COALESCE(SUM(fp),0) fp,COALESCE(SUM(reference_count),0) reference_count FROM round_scores WHERE user_id=?`,Game.version,uid).first();}
+async function stats(db,uid){return query(db,roundScores+` SELECT AVG(score) average,COUNT(*) rounds FROM round_scores WHERE user_id=?`,Game.version,uid).first();}
 async function leaders(db,mode){
  const group=mode==="country"?"r.country":mode==="university"?"r.country,r.university_key":"u.id";
  const name=mode==="country"?"r.country AS name,r.country":mode==="university"?"MIN(r.university) AS name,r.country":"u.nickname AS name,u.country,u.university";
- const {results}=await query(db,roundScores+` SELECT ${name},AVG(r.score) average,COUNT(*) rounds,SUM(r.tp) tp,SUM(r.fp) fp,SUM(r.reference_count) reference_count,COUNT(DISTINCT u.id) members FROM round_scores r JOIN game_users u ON u.id=r.user_id GROUP BY ${group} ORDER BY average DESC,rounds DESC,name ASC LIMIT 50`,Game.version).all();return results;
+ const {results}=await query(db,roundScores+` SELECT ${name},AVG(r.score) average,COUNT(*) rounds,COUNT(DISTINCT u.id) members FROM round_scores r JOIN game_users u ON u.id=r.user_id GROUP BY ${group} ORDER BY average DESC,rounds DESC,name ASC LIMIT 50`,Game.version).all();return results;
 }
 async function bankReady(env){
  if(!env.DB||(!env.IMAGES&&!env.IMAGE_SERVICE))return false;

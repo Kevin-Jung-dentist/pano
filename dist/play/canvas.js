@@ -5,15 +5,16 @@ class BoxEditor{
  constructor(canvas,onChange,onSelect){
  this.canvas=canvas;this.ctx=canvas.getContext("2d");this.onChange=onChange;this.onSelect=onSelect;this.boxes=[];this.history=[];this.future=[];this.mode="draw";this.category="caries_ungraded";this.space=false;this.hidden=false;this.t={scale:1,tx:0,ty:0};this.ready=false;
  this.resize=new ResizeObserver(()=>{this.cancel();this.paint();});this.resize.observe(canvas);
+ canvas.addEventListener("contextmenu",e=>e.preventDefault());
  canvas.addEventListener("pointerdown",e=>this.down(e));canvas.addEventListener("pointermove",e=>this.move(e));canvas.addEventListener("pointerup",e=>this.up(e));canvas.addEventListener("pointercancel",()=>this.cancel());
  canvas.addEventListener("wheel",e=>{e.preventDefault();if(!this.ready)return;const p=this.point(e),rect=canvas.getBoundingClientRect(),s=Math.max(.05,Math.min(10,this.t.scale*Math.exp(-e.deltaY*.001)));this.t={scale:s,tx:e.clientX-rect.left-p[0]*s,ty:e.clientY-rect.top-p[1]*s};this.paint();},{passive:false});
  window.addEventListener("blur",()=>{this.space=false;this.cancel();});
  window.addEventListener("keydown",e=>{if(!this.ready||canvas.closest("[hidden]")||/INPUT|SELECT|TEXTAREA/.test(e.target.tagName))return;
- if(e.code==="Space"){e.preventDefault();this.space=true;}if(e.key==="Delete"){e.preventDefault();this.remove();}
+ if(e.code==="Space"){e.preventDefault();this.space=true;this.cursor();}if(e.key==="Delete"){e.preventDefault();this.remove();}
  if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==="z"){e.preventDefault();e.shiftKey?this.redo():this.undo();}
- if(e.key.toLowerCase()==="b")this.setMode("draw");if(e.key.toLowerCase()==="v")this.setMode("select");if(e.key.toLowerCase()==="h")this.toggle();
+ if(e.key.toLowerCase()==="b")this.setMode("draw");if(e.key.toLowerCase()==="v")this.setMode("select");if(e.key.toLowerCase()==="h")this.toggle();if(e.key.toLowerCase()==="m")this.setMode("pan");
  });
- window.addEventListener("keyup",e=>{if(e.code==="Space")this.space=false;});
+ window.addEventListener("keyup",e=>{if(e.code==="Space"){this.space=false;this.cursor();}});
  }
  async load(im,boxes){
  this.ready=false;this.im=im;this.boxes=structuredClone(boxes);this.history=[];this.future=[];this.selected=null;this.hidden=false;this.drag=null;const token=Symbol();this.loading=token;
@@ -25,19 +26,21 @@ class BoxEditor{
  fit(){if(!this.im)return;const r=this.canvas.getBoundingClientRect();const s=Math.min(r.width/this.im.width,r.height/this.im.height)*.94;this.t={scale:s,tx:(r.width-this.im.width*s)/2,ty:(r.height-this.im.height*s)/2};this.paint();}
  point(e){const r=this.canvas.getBoundingClientRect();return G.toImage(e.clientX,e.clientY,{...this.t,left:r.left,top:r.top});}
  clamp(p){return [Math.min(this.im.width,Math.max(0,p[0])),Math.min(this.im.height,Math.max(0,p[1]))];}
- setMode(m){this.mode=m;document.getElementById("draw-tool")?.classList.toggle("active",m==="draw");document.getElementById("select-tool")?.classList.toggle("active",m==="select");}
+ setMode(m){this.cancel();this.mode=m;for(const [id,mode] of [["draw-tool","draw"],["select-tool","select"],["pan-tool","pan"]]){const b=document.getElementById(id);b?.classList.toggle("active",m===mode);b?.setAttribute("aria-pressed",String(m===mode));}this.cursor();}
+ cursor(){this.canvas.style.cursor=this.drag?.kind==="pan"?"grabbing":this.space||this.mode==="pan"?"grab":this.mode==="draw"?"crosshair":"default";}
+ pan(e){this.drag={kind:"pan",x:e.clientX,y:e.clientY,t:{...this.t}};this.cursor();}
  select(id){this.selected=id;this.onSelect(id);this.paint();}
  down(e){
- if(!this.ready||this.locked||e.button!==0)return;this.canvas.focus({preventScroll:true});this.canvas.setPointerCapture(e.pointerId);
- const p=this.clamp(this.point(e));if(this.space){this.drag={kind:"pan",x:e.clientX,y:e.clientY,t:{...this.t}};return;}
- if(this.hidden)return;
+ if(!this.ready||this.locked||![0,1,2].includes(e.button)||this.drag)return;e.preventDefault();this.canvas.focus({preventScroll:true});this.canvas.setPointerCapture(e.pointerId);
+ const p=this.clamp(this.point(e));if(this.space||this.mode==="pan"||e.button!==0){this.pan(e);return;}
+ if(this.hidden){this.pan(e);return;}
  const before=structuredClone(this.boxes);
  if(this.mode==="draw"){
  const b={id:crypto.randomUUID(),category:this.category,geometry:G.geometry[this.category],bbox:[...p,...p]};
  this.boxes.push(b);this.selected=b.id;this.drag={kind:"draw",id:b.id,start:p,before};this.paint();return;
  }
  const hit=[...this.boxes].reverse().find(b=>{const a=b.bbox,pad=8/this.t.scale;return p[0]>=a[0]-pad&&p[0]<=a[2]+pad&&p[1]>=a[1]-pad&&p[1]<=a[3]+pad;});
- if(!hit){this.select(null);return;}
+ if(!hit){this.select(null);this.pan(e);return;}
  this.selected=hit.id;const a=hit.bbox,pad=9/this.t.scale,corners=[[a[0],a[1]],[a[2],a[1]],[a[2],a[3]],[a[0],a[3]]],corner=corners.findIndex(c=>Math.abs(c[0]-p[0])<pad&&Math.abs(c[1]-p[1])<pad);
  this.drag={kind:corner<0?"move":"resize",corner,id:hit.id,start:p,original:[...a],before};this.onSelect(hit.id);this.paint();
  }
@@ -48,11 +51,11 @@ class BoxEditor{
  if(d.kind==="resize"){const a=[...d.original];if(d.corner===0||d.corner===3)a[0]=Math.min(p[0],a[2]-1);else a[2]=Math.max(p[0],a[0]+1);if(d.corner<2)a[1]=Math.min(p[1],a[3]-1);else a[3]=Math.max(p[1],a[1]+1);b.bbox=a;}
  this.paint();
  }
- up(e){const d=this.drag;if(!d)return;this.move(e);this.drag=null;if(d.kind==="pan")return;
+ up(e){const d=this.drag;if(!d)return;this.move(e);this.drag=null;if(this.canvas.hasPointerCapture?.(e.pointerId))this.canvas.releasePointerCapture(e.pointerId);this.cursor();if(d.kind==="pan")return;
  const b=this.boxes.find(x=>x.id===d.id);if(b&&(b.bbox[2]-b.bbox[0]<1||b.bbox[3]-b.bbox[1]<1)){this.boxes=d.before;this.selected=null;this.paint();return;}
  if(JSON.stringify(d.before)!==JSON.stringify(this.boxes)){this.history.push(d.before);this.future=[];this.changed();}this.onSelect(this.selected);this.paint();
  }
- cancel(){if(this.drag?.before)this.boxes=this.drag.before;this.drag=null;this.paint();}
+ cancel(){if(this.drag?.before)this.boxes=this.drag.before;this.drag=null;this.cursor();this.paint();}
  changed(){this.onChange(structuredClone(this.boxes));this.onSelect(this.selected);}
  remove(){if(!this.selected||!this.ready||this.locked)return;this.history.push(structuredClone(this.boxes));this.future=[];this.boxes=this.boxes.filter(x=>x.id!==this.selected);this.selected=null;this.changed();this.paint();}
  undo(){if(this.locked||!this.history.length)return;this.future.push(structuredClone(this.boxes));this.boxes=this.history.pop();this.selected=null;this.changed();this.paint();}

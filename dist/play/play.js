@@ -68,14 +68,14 @@ function renderReference(item,detail,host){
 }
 async function showResults(scroll=true){
  if(!practice)await loadHistory();
- if(scroll)panel("results-panel");if(practice){showPracticeResults();await leaderboard();return;}document.querySelector("#results-panel [data-i18n=resultTitle]").textContent=t("resultTitle");document.querySelector(".main-score span").textContent=t("outOf");document.querySelector(".score-cards").hidden=false;$("result-rank").hidden=false;$("another").textContent=t("nextSet");const r=round.result;$("total-score").textContent=I.number(r.score);$("metric-recall").textContent=I.percent(r.recall);$("metric-iou").textContent=I.percent(r.mean_iou);$("metric-precision").textContent=I.percent(r.precision);$("metric-fp").textContent=r.fp??"—";$("reference-count").textContent=t("referenceCount")+": "+(r.reference_count??"—");
- $("result-note").textContent=r.legacy?t("legacy"):r.score===null?t("noReference"):practice?t("practiceResult"):t(round.feedback_mode==="full"?"fullResultNote":"resultNote",{n:r.reference_count});
+ if(scroll)panel("results-panel");if(practice){showPracticeResults();await leaderboard();return;}document.querySelector("#results-panel [data-i18n=resultTitle]").textContent=t("resultTitle");document.querySelector(".main-score span").textContent=t("outOf");$("result-rank").hidden=false;$("another").textContent=t("nextSet");const r=round.result;$("total-score").textContent=I.number(r.score);
+ $("result-note").textContent=r.legacy?t("legacy"):r.score===null?t("noReference"):practice?t("practiceResult"):t(round.feedback_mode==="full"?"fullResultNote":"resultNote");
  $("practice-result").hidden=true;$("premium-results").hidden=practice||round.feedback_mode==="full";$("result-list").replaceChildren();
  for(const d of r.details){const im=round.items.find(x=>x.id===d.id),row=document.createElement("details");row.className="result-item";const title=document.createElement("summary");
- title.textContent=d.scored?t("caseFeedback",{n:d.position+1,tp:d.grade.tp,fn:d.grade.fn,fp:d.grade.fp}):t("caseLimited",{n:d.position+1});row.append(title);
+ title.textContent=d.scored?t("caseFeedback",{n:d.position+1}):t("caseLimited",{n:d.position+1});row.append(title);
  const text=document.createElement("p");text.textContent=d.scored?t(practice?"practiceNotice":"defaultExplanation"):t("limitedFeedback");row.append(text);
  if(d.scored){
- const metrics=document.createElement("div");metrics.className="case-metrics";for(const [key,v] of [["recall",d.grade.recall],["overlap",d.grade.mean_iou],["precision",d.grade.precision]]){const span=document.createElement("span");span.textContent=t(key)+": "+I.percent(v);metrics.append(span);}row.append(metrics);
+
  if(d.explanation){const explanation=document.createElement("p");explanation.textContent=t("sourceExplanation")+": "+d.explanation;row.append(explanation);}
  const legend=document.createElement("p");legend.className="legend";legend.textContent=t("legend");row.append(legend);let loaded=false;row.addEventListener("toggle",()=>{if(row.open&&!loaded){loaded=true;renderReference(im,d,row);}});
  }$("result-list").append(row);}
@@ -84,17 +84,17 @@ async function showResults(scroll=true){
 async function leaderboard(){
  $("ranks").replaceChildren();try{const data=await api("leaderboard?group="+group);if(!data.entries.length){rankMessage("emptyRank");return;}
  const countries=new Intl.DisplayNames([I.language],{type:"region"});
- data.entries.forEach((r,i)=>{const row=document.createElement("tr"),name=group==="country"?countries.of(r.country):r.name+" · "+r.country;for(const v of [i+1,name,I.number(r.average),r.rounds,r.tp+" / "+r.reference_count,r.members]){const cell=document.createElement("td");cell.textContent=v;row.append(cell);}$("ranks").append(row);});
+ data.entries.forEach((r,i)=>{const row=document.createElement("tr"),name=group==="country"?countries.of(r.country):r.name+" · "+r.country;for(const v of [i+1,name,I.percent(r.average===null?null:r.average/100),r.rounds,r.members]){const cell=document.createElement("td");cell.textContent=v;row.append(cell);}$("ranks").append(row);});
  }catch{rankMessage("rankFailed");}
 }
-function rankMessage(key){const row=document.createElement("tr"),cell=document.createElement("td");cell.colSpan=6;cell.textContent=t(key);row.append(cell);$("ranks").append(row);}
+function rankMessage(key){const row=document.createElement("tr"),cell=document.createElement("td");cell.colSpan=5;cell.textContent=t(key);row.append(cell);$("ranks").append(row);}
 function showPracticeResults(){
  const item=round.items[0];document.querySelector("#results-panel [data-i18n=resultTitle]").textContent=t("practiceComplete");
  $("total-score").textContent=item.boxes.length;document.querySelector(".main-score span").textContent=t("practiceBoxCount");
- document.querySelector(".score-cards").hidden=true;$("result-note").textContent=t("practiceResult");$("practice-result").hidden=true;$("premium-results").hidden=true;$("result-rank").hidden=true;$("another").textContent=t("practiceAgain");
+ $("result-note").textContent=t("practiceResult");$("practice-result").hidden=true;$("premium-results").hidden=true;$("result-rank").hidden=true;$("another").textContent=t("practiceAgain");
  const grid=document.createElement("div");grid.className="practice-compare";
  for(const key of ["practiceOwnTitle","practiceExampleTitle"]){const section=document.createElement("section"),heading=document.createElement("h3");heading.textContent=t(key);section.append(heading);
- if(key==="practiceOwnTitle")renderReference(item,{practice:true},section);else{const img=new Image();img.src="assets/banner-after.png";img.alt=t("afterAlt");img.width=1467;img.height=767;section.append(img);}grid.append(section);}
+ if(key==="practiceOwnTitle")renderReference(item,{practice:true},section);else{section.append(PanoExample.create(t("afterAlt")));}grid.append(section);}
  $("result-list").replaceChildren(grid);
 }
 async function startPractice(){
@@ -111,7 +111,7 @@ $("account").onclick=fillProfile;
 $("profile-form").onsubmit=async e=>{e.preventDefault();try{const p=G.profile({nickname:$("nickname").value,country:$("country").value,university:$("university").value});if(!$("terms").checked)throw Error(t("checkTerms"));me=(await api("profile",{...p,consent_version:config.terms_version})).user;await refreshMe();panel("landing");notice(t("profileSaved"));}catch(err){notice(I.error(err.message));}};
 $("logout").onclick=async()=>{await saving;try{await api("logout",{});me=null;await refreshMe();panel("landing");}catch(e){notice(e.message);}};
 $("delete-account").onclick=async()=>{if(!confirm(t("deleteConfirm")))return;await saving;try{await api("account/delete",{confirm:"DELETE"});me=null;await refreshMe();panel("landing");notice(t("deleted"));}catch(e){notice(e.message);}};
-$("finding").onchange=e=>{editor.category=e.target.value;editor.setMode("draw");};$("draw-tool").onclick=()=>editor.setMode("draw");$("select-tool").onclick=()=>editor.setMode("select");$("undo").onclick=()=>editor.undo();$("redo").onclick=()=>editor.redo();$("remove-box").onclick=()=>editor.remove();$("hide-boxes").onclick=()=>editor.toggle();$("fit").onclick=()=>editor.fit();
+$("finding").onchange=e=>{editor.category=e.target.value;editor.setMode("draw");};$("draw-tool").onclick=()=>editor.setMode("draw");$("select-tool").onclick=()=>editor.setMode("select");$("pan-tool").onclick=()=>editor.setMode("pan");$("undo").onclick=()=>editor.undo();$("redo").onclick=()=>editor.redo();$("remove-box").onclick=()=>editor.remove();$("hide-boxes").onclick=()=>editor.toggle();$("fit").onclick=()=>editor.fit();
 $("submit").onclick=()=>{if(!editor.boxes.length)$("confirm-submit").showModal();else submit();};$("skip").onclick=()=>{if(editor.boxes.length){notice(t("hasBoxes"));return;}$("confirm-submit").showModal();};
 $("cancel-empty").onclick=()=>$("confirm-submit").close();$("confirm-empty").onclick=()=>{$("confirm-submit").close();submit();};
 $("exit-game").onclick=async()=>{await saving;if(dirty){notice(t("unsaved"));return;}panel("landing");await loadHistory();notice("");};

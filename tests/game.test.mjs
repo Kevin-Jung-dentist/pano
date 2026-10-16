@@ -47,9 +47,9 @@ test("server controls score; retry cannot score twice; detailed feedback only af
  let path="rounds/"+r.id+"/cases/"+first.id+"/submit";r=(await call(h,path,{boxes:[box("p",ref[0].bbox)],revision:1,points:9999})).body;
  assert.equal(r.result,null);assert.equal((await call(h,path,{boxes:[],revision:0})).status,200);
  for(const c of r.items.filter(x=>!x.submitted))r=(await call(h,"rounds/"+r.id+"/cases/"+c.id+"/submit",{boxes:[box("p",ref[0].bbox)],revision:0,points:9999})).body;
- assert.equal(r.state,"complete");assert.equal(r.result.points,3);assert.equal(r.result.score,50);assert.equal(r.result.unscored_count,7);
+ assert.equal(r.state,"complete");assert.equal(r.result.score,50);for(const k of ["points","tp","fp","fn","reference_count","scored_count","unscored_count"])assert.ok(!Object.hasOwn(r.result,k));assert.ok(r.result.details.every(x=>!Object.hasOwn(x,"grade")));
  assert.equal(r.result.details.filter(x=>x.reference).length,3);
- const ranks=(await call(h,"leaderboard?group=individual")).body.entries;assert.equal(ranks[0].tp,3);assert.equal(ranks[0].average,50);
+ const ranks=(await call(h,"leaderboard?group=individual")).body.entries;assert.ok(!Object.hasOwn(ranks[0],"tp"));assert.ok(!Object.hasOwn(ranks[0],"reference_count"));assert.equal(ranks[0].average,50);
  assert.equal((await call(h,"rounds/"+r.id+"/cases/"+first.id+"/draft",{boxes:[],revision:2})).status,409);
  const next=(await call(h,"rounds",{})).body;assert.ok(next.items.every(c=>!r.items.some(p=>p.id===c.id)));
 });
@@ -144,4 +144,11 @@ test('round history survives reload without revealing references or another user
  assert.ok(!JSON.stringify(list).includes('reference'));assert.ok(!JSON.stringify(list).includes('finding-a'));
  assert.equal((await call(h,'rounds',undefined,'bob')).body.rounds.length,0);
  assert.equal((await call(h,'rounds/'+r.id)).body.result.score,100);
+});
+
+test("13 of 26 exact findings score 50; overlap and false positives lower it",()=>{
+ const refs=Array.from({length:26},(_,i)=>box('r'+i,[(i%13)*40,Math.floor(i/13)*100,(i%13)*40+20,Math.floor(i/13)*100+20]));
+ const exact=refs.slice(0,13);assert.equal(G.grade(exact,refs,im).score,50);
+ const partial=exact.map(b=>({...b,bbox:[b.bbox[0],b.bbox[1],b.bbox[0]+16,b.bbox[3]]}));assert.ok(Math.abs(G.grade(partial,refs,im).score-40)<1e-9);
+ assert.ok(Math.abs(G.grade([...exact,box('extra',[1000,500,1010,510])],refs,im).score-100*13/27)<1e-9);
 });
