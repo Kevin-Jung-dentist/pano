@@ -18,7 +18,7 @@ class CollaborationPanel(QWidget):
         self.count=QSpinBox();self.count.setRange(1,200);self.count.setValue(100)
         self.source=QComboBox();self.source.addItems([r[0] for r in window.st.db.execute("SELECT DISTINCT source FROM images ORDER BY source")]);self.source.setCurrentText("hanoi")
         self.split=QComboBox();self.split.addItems(["train","val","test"])
-        self.url=QLineEdit(read_json(ROOT/"config/collaboration.json",{}).get("editor_url","https://pano-9kh.pages.dev"))
+        self.url=QLineEdit(read_json(ROOT/"config/collaboration.json",{}).get("editor_url","https://pano-9kh.pages.dev/editor/"))
         self.predict=QCheckBox("활성 모델로 네 가지 병소의 AI 초안 생성");self.predict.setChecked(True)
         for name,w in (("친구 이름",self.actor),("분량",self.count),("데이터",self.source),("분할",self.split),("웹 주소",self.url)):form.addRow(name,w)
         form.addRow(self.predict);layout.addLayout(form)

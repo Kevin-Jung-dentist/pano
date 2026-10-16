@@ -99,7 +99,7 @@ function showPracticeResults(){
 }
 async function startPractice(){
  await saving;if(dirty){notice(t("unsaved"));return;}practice=true;dirty=false;saveError=null;saving=Promise.resolve();
- const im={id:"practice-banner-before",position:0,width:1462,height:765,scope:G.categories,image_url:"assets/banner-before.png",attribution:t("practiceAttribution"),license:"",boxes:[],revision:0,submitted:false};
+ const im={id:"practice-banner-before",position:0,width:1462,height:765,scope:G.categories,image_url:"/play/assets/banner-before.png",attribution:t("practiceAttribution"),license:"",boxes:[],revision:0,submitted:false};
  let restored=false;try{const saved=JSON.parse(localStorage.getItem(practiceDraftKey)||"null");if(saved&&saved.width===im.width&&saved.height===im.height&&Object.entries(G.coordinateSystem).every(([k,v])=>saved.coordinate_system?.[k]===v)){im.boxes=G.boxes(saved.boxes,im);restored=im.boxes.length>0;}}catch{notice(t("cacheInvalid"));}
  round={id:"practice",state:"active",items:[im],total_target:1,scored_target:0,feedback_mode:"practice"};await showNext();notice(t(restored?"practiceRestored":"practiceNotice"));
 }

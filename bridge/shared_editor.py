@@ -43,7 +43,7 @@ class SharedBoxEditor(QDialog):
         close=QPushButton("닫기 · 자동 저장본은 유지");close.clicked.connect(self.close);row.addWidget(close);layout.addLayout(row)
         self.profile.downloadRequested.connect(self.download_requested)
         self.page.loadFinished.connect(self.loaded)
-        path=Path(__file__).resolve().parents[2]/"collab-web/dist/index.html"
+        path=Path(__file__).resolve().parents[2]/"collab-web/dist/editor/index.html"
         self.view.load(QUrl.fromLocalFile(str(path)))
     def loaded(self,ok):
         if not ok:self.status.setText("편집기 로드 실패");return

@@ -147,7 +147,7 @@ def create_package(st,actor,count=50,source="hanoi",split="train",predict=True,e
             for iid in selected:
                 record=workspace(st).load(iid)
                 if record.get("stale"):workspace(st).sync(record)
-        web=Path(__file__).resolve().parents[2]/"collab-web"/"dist"
+        web=Path(__file__).resolve().parents[2]/"collab-web"/"dist"/"editor"
         build=hashlib.sha256(b"".join((web/n).read_bytes() for n in ("index.html","style.css","app.js","core.js","zip.js"))).hexdigest()
         manifest={"format":"pano-work","version":1,"package_id":pid,"actor":actor,"owner_kind":owner_kind,"editor_build":build,"coordinate_system":COORDINATE_SYSTEM,"created":now(),
                   "token":uuid.uuid4().hex,"editor_url":editor_url,"models":options,
@@ -156,7 +156,7 @@ def create_package(st,actor,count=50,source="hanoi",split="train",predict=True,e
             z.writestr("labels.json",encode(manifest))
             z.writestr("START.txt","Pano 공동 라벨링\n"+(editor_url+"\n" if editor_url else "")+
                        "압축을 푼 뒤 index.html을 열거나 위 웹 주소에 접속하세요.\n작업 ZIP 열기에서 이 ZIP을 선택하세요. 수정 후 결과 JSON을 담당자에게 보내세요.\n영상과 AI 초안은 브라우저 안에서 처리됩니다.\n")
-            web=Path(__file__).resolve().parents[2]/"collab-web"/"dist"
+            web=Path(__file__).resolve().parents[2]/"collab-web"/"dist"/"editor"
             for name in ("index.html","style.css","app.js","core.js","zip.js"):
                 z.write(web/name,name)
             for im in manifest["images"]:z.write(inside(ROOT/st.image(im["id"])["path"]),im["file"])

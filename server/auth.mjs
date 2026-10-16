@@ -36,7 +36,7 @@ export async function callback(req,env){
  env.DB.prepare("INSERT INTO game_sessions VALUES(?,?,?)").bind(await digest(token),user.id,now()+604800),
  env.DB.prepare("DELETE FROM game_oauth WHERE expires_at<?").bind(now()),
  env.DB.prepare("DELETE FROM game_sessions WHERE expires_at<?").bind(now())]);
- const headers=new Headers({Location:env.APP_ORIGIN+"/play/","Cache-Control":"no-store"});
+ const headers=new Headers({Location:env.APP_ORIGIN+"/","Cache-Control":"no-store"});
  headers.append("Set-Cookie",setCookie(cookieName(env),token,604800,env));headers.append("Set-Cookie",setCookie("pano-oauth","",0,env));
  return new Response(null,{status:302,headers});
 }

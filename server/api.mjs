@@ -144,7 +144,7 @@ export async function handle(req,env){
  if(req.headers.get("Origin")!==env.APP_ORIGIN||!req.headers.get("Content-Type")?.startsWith("application/json"))fail(403,"같은 사이트에서 요청해 주세요.");
  }
  if(path==="/api/auth/start"&&req.method==="GET"){if(!Auth.ready(env))fail(503,"Google 로그인 연결을 준비하고 있습니다.");return Auth.start(env);}
- if(path==="/api/auth/callback"&&req.method==="GET"){if(!Auth.ready(env))fail(503,"Google 로그인 연결을 준비하고 있습니다.");try{return await Auth.callback(req,env);}catch{return new Response(null,{status:302,headers:{Location:env.APP_ORIGIN+"/play/?login=failed","Cache-Control":"no-store"}});}}
+ if(path==="/api/auth/callback"&&req.method==="GET"){if(!Auth.ready(env))fail(503,"Google 로그인 연결을 준비하고 있습니다.");try{return await Auth.callback(req,env);}catch{return new Response(null,{status:302,headers:{Location:env.APP_ORIGIN+"/?login=failed","Cache-Control":"no-store"}});}}
  if(path==="/api/me"&&req.method==="GET"){const u=env.DB?await Auth.session(req,env):null;return json({user:pub(u),stats:u?await stats(env.DB,u.id):null});}
  if(path==="/api/leaderboard"&&req.method==="GET"){if(!env.DB)return json({entries:[]});const mode=url.searchParams.get("group")||"individual";if(!["individual","country","university"].includes(mode))fail(400,"순위 범위 오류");return json({entries:await leaders(env.DB,mode)});}
  if(/^\/api\/images\/[a-zA-Z0-9_-]+$/.test(path)&&req.method==="GET"&&env.IMAGE_SERVICE)return await env.IMAGE_SERVICE.fetch(req);

@@ -1,6 +1,6 @@
 /* One immutable source image + vector boxes: toggling never swaps or resizes X-ray pixels. */
 (function(){
- const width=1462,height=765,src="assets/banner-before.png",ns="http://www.w3.org/2000/svg";
+ const width=1462,height=765,src="/play/assets/banner-before.png",ns="http://www.w3.org/2000/svg";
  // Original screenshot coordinates registered onto banner-before (approximately +1,+1 px).
  const annotations=[
   [1048,328,12,25,"#ffbf55"],[998,356,7,10,"#ffbf55"],[998,429,6,6,"#ffbf55"],[915,448,11,17,"#ffbf55"],
