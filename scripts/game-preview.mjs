@@ -7,7 +7,7 @@ import {harness} from "../tests/game-harness.mjs";
 import {handle} from "../server/api.mjs";
 const h=await harness(),root=fileURLToPath(new URL("../dist/",import.meta.url));
 h.env.IMAGES={get:async()=>({body:fs.readFileSync(new URL("../tests/fixtures/game-practice.png",import.meta.url))})};
-const mime={".html":"text/html; charset=utf-8",".css":"text/css",".js":"text/javascript",".svg":"image/svg+xml"};
+const mime={".html":"text/html; charset=utf-8",".css":"text/css",".js":"text/javascript",".svg":"image/svg+xml",".png":"image/png"};
 http.createServer(async(req,res)=>{
  try{
  const u=new URL(req.url,h.env.APP_ORIGIN);

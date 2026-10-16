@@ -177,7 +177,7 @@ node --test tests/core.test.js tests/game.test.mjs tests/i18n.test.js
 ~~~
 
 ZIP 편집기는 dist를 정적 HTTP 서버로 실행합니다. 게임 검증용 `node scripts/game-preview.mjs`는 localhost에서만 동작하는 합성 문제·가짜 계정 서버입니다. `/__qa/start`는 이 로컬 서버에만 존재하며 배포되는 Functions에는 없습니다.
-**기능 연습해 보기**는 합성 도형이며 실제 환자 영상이나 모델 성능 예시가 아닙니다.
+**조작 연습**은 운영자가 제공한 `banner_before.PNG`를 실제 게임과 같은 원본 픽셀 박스 편집기로 엽니다. 연습 중 박스는 이 브라우저에 자동 저장되고, 제출하면 `banner_after.PNG` 표시 예시와 비교할 수 있습니다. 검증된 정답 JSON이 없는 예시이므로 점수를 산정하거나 순위·학습자료에 반영하지 않습니다. 두 PNG는 `dist/play/assets/`에 원본 그대로 포함되며 공개 랜딩에도 사용됩니다.
 
 작업 형식: ZIP_STORED, labels.json + images/id.png + 오프라인 편집기.
 반환 형식: pano-result JSON. 좌표는 원본 픽셀의 [x1,y1,x2,y2]입니다.

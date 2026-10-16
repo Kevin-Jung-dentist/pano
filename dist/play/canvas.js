@@ -60,7 +60,7 @@ class BoxEditor{
  toggle(){this.hidden=!this.hidden;document.getElementById("hide-boxes").textContent=window.LoDI18n.t(this.hidden?"show":"hide");this.paint();}
  paint(){
  const r=this.canvas.getBoundingClientRect();if(!r.width||!r.height)return;const dpr=window.devicePixelRatio||1;this.canvas.width=Math.round(r.width*dpr);this.canvas.height=Math.round(r.height*dpr);
- const c=this.ctx;c.setTransform(this.canvas.width/r.width,0,0,this.canvas.height/r.height,0,0);c.fillStyle="#101a17";c.fillRect(0,0,r.width,r.height);if(!this.ready)return;
+ const c=this.ctx;c.setTransform(this.canvas.width/r.width,0,0,this.canvas.height/r.height,0,0);c.fillStyle="#090c11";c.fillRect(0,0,r.width,r.height);if(!this.ready)return;
  c.translate(this.t.tx,this.t.ty);c.scale(this.t.scale,this.t.scale);c.drawImage(this.image,0,0);
  if(this.hidden)return;
  this.boxes.forEach((b,i)=>{const a=b.bbox;c.strokeStyle=colors[b.category];c.lineWidth=(b.id===this.selected?3:2)/this.t.scale;c.strokeRect(a[0],a[1],a[2]-a[0],a[3]-a[1]);c.font=12/this.t.scale+"px sans-serif";c.fillStyle=colors[b.category];c.fillText(String(i+1),a[0]+3/this.t.scale,Math.max(14/this.t.scale,a[1]-4/this.t.scale));if(b.id===this.selected){const z=7/this.t.scale;[[a[0],a[1]],[a[2],a[1]],[a[2],a[3]],[a[0],a[3]]].forEach(p=>c.fillRect(p[0]-z/2,p[1]-z/2,z,z));}});
