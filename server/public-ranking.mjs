@@ -1,3 +1,4 @@
+import Ranking from '../dist/play/ranking.js';
 const graphemes=new Intl.Segmenter(undefined,{granularity:'grapheme'});
 export const PUBLIC_RANK_LIMIT=250;
 export function publicNickname(value){
@@ -10,4 +11,17 @@ export function publicNickname(value){
 }
 export function publicEntries(rows,mode){
  return mode==='individual'?rows.map(row=>({...row,name:publicNickname(row.name)})):rows;
+}
+export function publicLeaderboard(real,demos,mode){
+ let include;
+ if(mode==='individual'){
+  const winners=new Set([...real,...demos].sort(Ranking.compare).slice(0,PUBLIC_RANK_LIMIT));
+  include=row=>winners.has(row);
+ }else{
+  // Merge both sources before applying the top-N limit. Otherwise two lower
+  // source ranks can disappear even when their combined team belongs in the top N.
+  const keys=new Set(Ranking.entries({entries:real,demo_entries:demos},mode).slice(0,PUBLIC_RANK_LIMIT).map(r=>Ranking.groupKey(r,mode)));
+  include=row=>keys.has(Ranking.groupKey(row,mode));
+ }
+ return {entries:publicEntries(real.filter(include),mode),demo_entries:publicEntries(demos.filter(include),mode)};
 }

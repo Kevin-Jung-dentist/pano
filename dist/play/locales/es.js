@@ -99,7 +99,7 @@ LoDLocales.es={
   "individual": "Individual",
   "country": "País / región",
   "university": "Universidad / institución",
-  "rankNote": "Ordenado por puntuación media y luego por series completadas",
+  "rankNote": "Puntos totales = puntuación media (%) × preguntas completadas · desempate por mayor media",
   "rankDisclaimer": "Los registros reflejan a participantes, no la capacidad clínica de países o universidades.",
   "rank": "Puesto",
   "playerTeam": "Lector / equipo",
@@ -282,5 +282,7 @@ LoDLocales.es={
   "demoCreated": "Registro demo añadido. Añade otro o vuelve a la lista.",
   "demoRetryCreate": "Comprobar / reintentar",
   "demoRetryOriginal": "Reintenta con los mismos datos para confirmar el guardado.",
-  "rankMore": "Mostrar más"
+  "rankMore": "Mostrar más",
+  "rankPoints": "Puntos totales",
+  "rankQuestions": "Preguntas completadas"
 };

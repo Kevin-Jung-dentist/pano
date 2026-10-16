@@ -43,7 +43,7 @@ LoDLocales.en={
   "individual": "Individual",
   "country": "Country / region",
   "university": "University / institution",
-  "rankNote": "Ranked by mean set score, then number of completed sets",
+  "rankNote": "Total points = average score (%) × completed questions · ties favor higher average scores",
   "rankDisclaimer": "Game records reflect participants, not a country's or university's clinical ability.",
   "rank": "Rank",
   "playerTeam": "Reader / team",
@@ -282,5 +282,7 @@ LoDLocales.en={
   "demoCreated": "Demo record added. Add another below or return to the list.",
   "demoRetryCreate": "Check save / retry",
   "demoRetryOriginal": "Retry the same input first to confirm whether it was saved.",
-  "rankMore": "Show more"
+  "rankMore": "Show more",
+  "rankPoints": "Total points",
+  "rankQuestions": "Questions completed"
 };

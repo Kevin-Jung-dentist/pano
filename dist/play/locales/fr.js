@@ -99,7 +99,7 @@ LoDLocales.fr={
   "individual": "Individuel",
   "country": "Pays / région",
   "university": "Université / établissement",
-  "rankNote": "Classement par score moyen, puis par séries terminées",
+  "rankNote": "Total de points = score moyen (%) × questions terminées · en cas d’égalité, priorité au score moyen",
   "rankDisclaimer": "Les résultats reflètent les participants, non la compétence clinique des pays ou universités.",
   "rank": "Rang",
   "playerTeam": "Lecteur / équipe",
@@ -282,5 +282,7 @@ LoDLocales.fr={
   "demoCreated": "Démonstration ajoutée. Ajoutez-en une autre ou revenez à la liste.",
   "demoRetryCreate": "Vérifier / réessayer",
   "demoRetryOriginal": "Réessayez avec les mêmes données pour confirmer l’enregistrement.",
-  "rankMore": "Afficher plus"
+  "rankMore": "Afficher plus",
+  "rankPoints": "Total de points",
+  "rankQuestions": "Questions terminées"
 };

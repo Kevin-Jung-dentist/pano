@@ -99,7 +99,7 @@ LoDLocales.zh={
   "individual": "个人",
   "country": "国家／地区",
   "university": "学校／机构",
-  "rankNote": "按每组平均分排名，同分时按完成组数排名",
+  "rankNote": "累计积分 = 平均得分（%）× 已完成题数 · 同分时平均得分高者优先",
   "rankDisclaimer": "排名反映参与者记录，不代表国家或学校的临床水平。",
   "rank": "排名",
   "playerTeam": "读片者／团队",
@@ -282,5 +282,7 @@ LoDLocales.zh={
   "demoCreated": "演示记录已添加。可继续添加或返回列表。",
   "demoRetryCreate": "检查保存／重试",
   "demoRetryOriginal": "请先用相同输入重试，以确认是否已保存。",
-  "rankMore": "显示更多"
+  "rankMore": "显示更多",
+  "rankPoints": "累计积分",
+  "rankQuestions": "已完成题数"
 };

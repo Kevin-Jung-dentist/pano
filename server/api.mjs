@@ -2,7 +2,7 @@ import Game from "../dist/game-core.js";
 import * as Auth from "./auth.mjs";
 import * as Payments from "./payments.mjs";
 import * as Demo from "./demo-leaderboard.mjs";
-import {publicEntries,PUBLIC_RANK_LIMIT} from "./public-ranking.mjs";
+import {publicLeaderboard,PUBLIC_RANK_LIMIT} from "./public-ranking.mjs";
 const TERMS="2026-10-17-v2";
 const fail=(status,message)=>{throw Object.assign(new Error(message),{status});};
 const json=(data,status=200)=>new Response(JSON.stringify(data),{status,headers:{"Content-Type":"application/json; charset=utf-8","Cache-Control":"no-store","X-Content-Type-Options":"nosniff"}});
@@ -111,7 +111,7 @@ async function saveCase(req,db,rid,cid,u,submit){
  if(!s)fail(409,"다른 창에서 변경되었습니다.");return s;
 }
 const roundScores=`WITH round_scores AS (
- SELECT r.id,r.user_id,r.country,r.university,r.university_key,
+ SELECT r.id,r.user_id,r.country,r.university,r.university_key,r.total_target AS questions,
  SUM(json_extract(rc.grade_json,'$.tp')) tp,SUM(json_extract(rc.grade_json,'$.fp')) fp,
  SUM(json_extract(rc.grade_json,'$.reference_count')) reference_count,
  100.0*SUM(json_extract(rc.grade_json,'$.iou_sum'))/
@@ -123,7 +123,8 @@ async function stats(db,uid){return query(db,roundScores+` SELECT AVG(score) ave
 async function leaders(db,mode){
  const group=mode==="country"?"r.country":mode==="university"?"r.country,r.university_key":"u.id";
  const name=mode==="country"?"r.country AS name,r.country":mode==="university"?"MIN(r.university) AS name,r.country":"u.nickname AS name,u.country,u.university";
- const {results}=await query(db,roundScores+` SELECT ${name},AVG(r.score) average,COUNT(*) rounds,COUNT(DISTINCT u.id) members FROM round_scores r JOIN game_users u ON u.id=r.user_id WHERE NOT EXISTS(SELECT 1 FROM game_admins admin WHERE admin.user_id=u.id) GROUP BY ${group} ORDER BY average DESC,rounds DESC,name ASC LIMIT ${PUBLIC_RANK_LIMIT}`,Game.version).all();return publicEntries(results,mode);
+ const limit=mode==='individual'?` LIMIT ${PUBLIC_RANK_LIMIT}`:'';
+ const {results}=await query(db,roundScores+` SELECT ${name},SUM(r.score*r.questions)/SUM(r.questions) average,SUM(r.score*r.questions/100.0) points,SUM(r.questions) questions,COUNT(*) rounds,COUNT(DISTINCT u.id) members FROM round_scores r JOIN game_users u ON u.id=r.user_id WHERE NOT EXISTS(SELECT 1 FROM game_admins admin WHERE admin.user_id=u.id) GROUP BY ${group} ORDER BY points DESC,average DESC,questions DESC,name ASC${limit}`,Game.version).all();return results;
 }
 async function bankReady(env){
  if(!env.DB||(!env.IMAGES&&!env.IMAGE_SERVICE))return false;
@@ -153,7 +154,7 @@ export async function handle(req,env){
  if(path==="/api/auth/start"&&req.method==="GET"){if(!Auth.ready(env))fail(503,"Google 로그인 연결을 준비하고 있습니다.");return Auth.start(env);}
  if(path==="/api/auth/callback"&&req.method==="GET"){if(!Auth.ready(env))fail(503,"Google 로그인 연결을 준비하고 있습니다.");try{return await Auth.callback(req,env);}catch{return new Response(null,{status:302,headers:{Location:env.APP_ORIGIN+"/?login=failed","Cache-Control":"no-store"}});}}
  if(path==="/api/me"&&req.method==="GET"){const u=env.DB?await Auth.session(req,env):null;return json({user:u?{...pub(u),is_admin:await Demo.isAdmin(env.DB,u.id)}:null,stats:u?await stats(env.DB,u.id):null,payments:u?await Payments.account(env.DB,u.id):null});}
- if(path==="/api/leaderboard"&&req.method==="GET"){if(!env.DB)return json({entries:[]});const mode=url.searchParams.get("group")||"individual";if(!["individual","country","university"].includes(mode))fail(400,"순위 범위 오류");return json({entries:await leaders(env.DB,mode),demo_entries:await Demo.list(env.DB,mode)});}
+ if(path==="/api/leaderboard"&&req.method==="GET"){if(!env.DB)return json({entries:[],demo_entries:[]});const mode=url.searchParams.get("group")||"individual";if(!["individual","country","university"].includes(mode))fail(400,"순위 범위 오류");return json(publicLeaderboard(await leaders(env.DB,mode),await Demo.list(env.DB,mode),mode));}
  if(/^\/api\/images\/[a-zA-Z0-9_-]+$/.test(path)&&req.method==="GET"&&env.IMAGE_SERVICE)return await env.IMAGE_SERVICE.fetch(req);
  const u=await user(req,env,false),db=env.DB;
  if(path.startsWith("/api/admin/")){

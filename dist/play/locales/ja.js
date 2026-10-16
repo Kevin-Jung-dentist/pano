@@ -43,7 +43,7 @@ LoDLocales.ja={
   "individual": "個人",
   "country": "国・地域",
   "university": "大学・機関",
-  "rankNote": "完了セットの平均点順。同点は完了セット数順。",
+  "rankNote": "累計ポイント = 平均スコア（%）× 解答済み問題数 · 同点の場合は平均スコア順",
   "rankDisclaimer": "参加者のゲーム記録であり、国や大学の臨床能力を示すものではありません。",
   "rank": "順位",
   "playerTeam": "参加者・チーム",
@@ -282,5 +282,7 @@ LoDLocales.ja={
   "demoCreated": "デモ記録を追加しました。続けて追加するか一覧に戻れます。",
   "demoRetryCreate": "保存結果確認・再試行",
   "demoRetryOriginal": "同じ入力で再試行し、保存結果を確認してください。",
-  "rankMore": "もっと見る"
+  "rankMore": "もっと見る",
+  "rankPoints": "累計ポイント",
+  "rankQuestions": "解答済み問題数"
 };

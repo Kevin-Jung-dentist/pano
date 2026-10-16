@@ -85,6 +85,7 @@ async function showResults(scroll=true){
 let rankRequest=0;
 async function leaderboard(){
  const request=++rankRequest,selected=group;$("ranks").replaceChildren();$("rank-more").hidden=true;
+ const identity=selected==='individual'?'nickname':selected;$("rank-identity").dataset.i18n=identity;$("rank-identity").textContent=t(identity);
  try{const data=await api("leaderboard?group="+selected);if(request!==rankRequest)return;
  const countries=new Intl.DisplayNames([I.language],{type:"region"});
  const entries=LoDRanking.entries(data,selected);
@@ -95,7 +96,7 @@ async function leaderboard(){
   const i=shown+offset;
   const row=document.createElement("tr");
   const name=selected==="country"?countries.of(r.country):r.name;
-  for(const [col,v] of [i+1,name,I.percent(r.average===null?null:r.average/100),I.number(r.rounds,0),I.number(r.members,0)].entries()){
+  for(const [col,v] of [i+1,name,I.number(r.points,2),I.number(r.questions,0),I.percent(r.average===null?null:r.average/100)].entries()){
    const cell=document.createElement("td");cell.textContent=v;
    if(col===1&&selected!=="country"){const region=document.createElement("small");region.className="rank-region";region.textContent=countries.of(r.country);cell.append(region);}
    row.append(cell);

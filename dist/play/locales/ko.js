@@ -43,7 +43,7 @@ LoDLocales.ko={
   "individual": "개인",
   "country": "국가 / 지역",
   "university": "대학 / 기관",
-  "rankNote": "완료한 세트의 평균 점수 순 · 같은 점수면 완료 세트 수 순",
+  "rankNote": "누적 점수 = 평균 점수(%) × 풀이 문제 수 · 동점이면 평균 점수 순",
   "rankDisclaimer": "참가자의 게임 기록이며 국가·대학의 임상 능력을 뜻하지 않습니다.",
   "rank": "순위",
   "playerTeam": "참가자 / 팀",
@@ -282,5 +282,7 @@ LoDLocales.ko={
   "demoCreated": "데모 기록을 추가했습니다. 아래에서 다른 기록을 추가하거나 목록으로 돌아갈 수 있습니다.",
   "demoRetryCreate": "저장 결과 확인·재시도",
   "demoRetryOriginal": "먼저 같은 입력으로 저장을 재시도해 결과를 확인하세요.",
-  "rankMore": "더 보기"
+  "rankMore": "더 보기",
+  "rankPoints": "누적 점수",
+  "rankQuestions": "풀이 문제 수"
 };
