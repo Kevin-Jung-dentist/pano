@@ -199,7 +199,11 @@ LoDLocales.en={
     "paymentResolveFirst": "Check or cancel your pending checkout before starting a new set.",
     "paymentBeforeDelete": "Resolve pending payments or use/refund your unused pass before deleting the account.",
     "paymentContactOwner": "This older checkout needs review. Contact the site operator.",
-    "paymentInvalidWebhook": "Invalid PayPal notification."
+    "paymentInvalidWebhook": "Invalid PayPal notification.",
+    "adminOnly": "Administrator access only.",
+    "demoDeleteConfirm": "Confirm deletion.",
+    "demoInvalidRevision": "Invalid record version.",
+    "demoConflict": "Changed elsewhere. Refresh and edit again."
   },
   "demoNav": "Preview",
   "seeExample": "Explore the reading experience",
@@ -246,5 +250,21 @@ LoDLocales.en={
   "paymentCheck": "Check payment status",
   "paymentCancel": "Cancel checkout",
   "paymentLoginAgain": "Sign in with the Google account used for checkout to check your payment.",
-  "paymentSandbox": "PayPal test environment. This is not a live sale."
+  "paymentSandbox": "PayPal test environment. This is not a live sale.",
+  "admin": "Admin",
+  "adminTitle": "Manage demo leaderboard",
+  "adminIntro": "These readers and scores are fictional. The (demo) label stays beside the name. Changes do not affect real records or training data.",
+  "demoRankNotice": "Demo league · Fictional readers and scores, separate from real rankings.",
+  "deleteAllDemos": "Delete all demo records",
+  "reloadDemos": "Refresh",
+  "actions": "Actions",
+  "demoCount": "{n} demo readers",
+  "saveNickname": "Save name",
+  "deleteDemo": "Delete",
+  "deleteDemoConfirm": "Delete the demo record for {name}?",
+  "deleteAllDemosConfirm": "Delete all demo records? Real participant records will remain.",
+  "adminSaved": "Changes saved.",
+  "adminReady": "Edit a nickname, then select Save name.",
+  "adminSignIn": "Sign in with the administrator's Google account.",
+  "adminOnly": "Administrator access only."
 };

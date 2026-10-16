@@ -1,6 +1,6 @@
 "use strict";
 (function(){
-const supported=["ko","en","ja"],locales=globalThis.LoDLocales;
+const supported=["ko", "en", "ja", "zh", "es", "it", "fr"],locales=globalThis.LoDLocales;
 let language;try{language=new URLSearchParams(location.search).get("lang")||localStorage.getItem("lod-language");}catch{}
 if(!supported.includes(language))language=(navigator.languages||[navigator.language]).map(s=>s.slice(0,2)).find(s=>supported.includes(s))||"en";
 function t(key,values={}){let text=locales[language]?.[key]??locales.en[key]??key;return String(text).replace(/\{(\w+)\}/g,(_,k)=>values[k]??"{"+k+"}");}

@@ -199,7 +199,11 @@ LoDLocales.ja={
     "paymentResolveFirst": "手続き中の決済を確認またはキャンセルしてから開始してください。",
     "paymentBeforeDelete": "手続き中の決済や未使用利用券があります。決済取消、利用、または返金後に削除してください。",
     "paymentContactOwner": "時間が経った決済リクエストの確認が必要です。運営者にお問い合わせください。",
-    "paymentInvalidWebhook": "無効なPayPal通知です。"
+    "paymentInvalidWebhook": "無効なPayPal通知です。",
+    "adminOnly": "管理者のみ利用できます。",
+    "demoDeleteConfirm": "削除を確認してください。",
+    "demoInvalidRevision": "記録のバージョンが無効です。",
+    "demoConflict": "別の画面で変更されました。更新して編集してください。"
   },
   "demoNav": "読影例",
   "seeExample": "読影画面を見る",
@@ -246,5 +250,21 @@ LoDLocales.ja={
   "paymentCheck": "決済状況を確認",
   "paymentCancel": "決済手続きをキャンセル",
   "paymentLoginAgain": "決済時に使用したGoogleアカウントでログインして状況を確認してください。",
-  "paymentSandbox": "PayPalテスト環境です。実際の販売ではありません。"
+  "paymentSandbox": "PayPalテスト環境です。実際の販売ではありません。",
+  "admin": "管理者",
+  "adminTitle": "デモランキング管理",
+  "adminIntro": "架空の参加者・点数です。名前の横の (demo) 表示は残ります。変更は実際の記録や学習データに影響しません。",
+  "demoRankNotice": "デモリーグ · 架空の参加者・点数です。実際の順位とは別です。",
+  "deleteAllDemos": "デモ記録をすべて削除",
+  "reloadDemos": "更新",
+  "actions": "操作",
+  "demoCount": "デモ参加者 {n}人",
+  "saveNickname": "名前を保存",
+  "deleteDemo": "削除",
+  "deleteDemoConfirm": "{name} のデモ記録を削除しますか？",
+  "deleteAllDemosConfirm": "デモ記録をすべて削除しますか？実際の参加者の記録は残ります。",
+  "adminSaved": "変更を保存しました。",
+  "adminReady": "ニックネームを編集し、名前を保存を押してください。",
+  "adminSignIn": "管理者のGoogleアカウントでログインしてください。",
+  "adminOnly": "管理者のみ利用できます。"
 };

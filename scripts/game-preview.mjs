@@ -7,7 +7,9 @@ import {harness} from "../tests/game-harness.mjs";
 import {handle} from "../server/api.mjs";
 import imageWorker from "../server/image-worker.mjs";
 import {compileBank} from "./bank.mjs";
-const h=await harness(),root=fileURLToPath(new URL("../dist/",import.meta.url));
+const h=await harness();
+if(process.env.PANO_QA_ADMIN==="alice")h.DB.db.prepare("INSERT INTO game_admins VALUES(?,?)").run("alice",Math.floor(Date.now()/1000));
+const root=fileURLToPath(new URL("../dist/",import.meta.url));
 h.env.IMAGES={get:async()=>({body:fs.readFileSync(new URL("../tests/fixtures/game-practice.png",import.meta.url))})};
 const port=Number(process.env.PANO_QA_PORT||8789);h.env.APP_ORIGIN="http://127.0.0.1:"+port;
 if(process.env.PANO_QA_BANK){

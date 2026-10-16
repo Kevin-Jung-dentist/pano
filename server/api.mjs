@@ -1,6 +1,7 @@
 import Game from "../dist/game-core.js";
 import * as Auth from "./auth.mjs";
 import * as Payments from "./payments.mjs";
+import * as Demo from "./demo-leaderboard.mjs";
 const TERMS="2026-10-17-v2";
 const fail=(status,message)=>{throw Object.assign(new Error(message),{status});};
 const json=(data,status=200)=>new Response(JSON.stringify(data),{status,headers:{"Content-Type":"application/json; charset=utf-8","Cache-Control":"no-store","X-Content-Type-Options":"nosniff"}});
@@ -150,10 +151,14 @@ export async function handle(req,env){
  }
  if(path==="/api/auth/start"&&req.method==="GET"){if(!Auth.ready(env))fail(503,"Google 로그인 연결을 준비하고 있습니다.");return Auth.start(env);}
  if(path==="/api/auth/callback"&&req.method==="GET"){if(!Auth.ready(env))fail(503,"Google 로그인 연결을 준비하고 있습니다.");try{return await Auth.callback(req,env);}catch{return new Response(null,{status:302,headers:{Location:env.APP_ORIGIN+"/?login=failed","Cache-Control":"no-store"}});}}
- if(path==="/api/me"&&req.method==="GET"){const u=env.DB?await Auth.session(req,env):null;return json({user:pub(u),stats:u?await stats(env.DB,u.id):null,payments:u?await Payments.account(env.DB,u.id):null});}
- if(path==="/api/leaderboard"&&req.method==="GET"){if(!env.DB)return json({entries:[]});const mode=url.searchParams.get("group")||"individual";if(!["individual","country","university"].includes(mode))fail(400,"순위 범위 오류");return json({entries:await leaders(env.DB,mode)});}
+ if(path==="/api/me"&&req.method==="GET"){const u=env.DB?await Auth.session(req,env):null;return json({user:u?{...pub(u),is_admin:await Demo.isAdmin(env.DB,u.id)}:null,stats:u?await stats(env.DB,u.id):null,payments:u?await Payments.account(env.DB,u.id):null});}
+ if(path==="/api/leaderboard"&&req.method==="GET"){if(!env.DB)return json({entries:[]});const mode=url.searchParams.get("group")||"individual";if(!["individual","country","university"].includes(mode))fail(400,"순위 범위 오류");return json({entries:await leaders(env.DB,mode),demo_entries:await Demo.list(env.DB,mode)});}
  if(/^\/api\/images\/[a-zA-Z0-9_-]+$/.test(path)&&req.method==="GET"&&env.IMAGE_SERVICE)return await env.IMAGE_SERVICE.fetch(req);
  const u=await user(req,env,false),db=env.DB;
+ if(path.startsWith("/api/admin/")){
+  if(!await Demo.isAdmin(db,u.id))fail(403,"adminOnly");
+  return json(await Demo.manage(db,path,req.method,()=>body(req)));
+ }
  if(path==="/api/logout"&&req.method==="POST"){await query(db,"DELETE FROM game_sessions WHERE token_hash=?",await Auth.digest(Auth.cookie(req,Auth.cookieName(env)))).run();const res=json({ok:true});res.headers.set("Set-Cookie",Auth.setCookie(Auth.cookieName(env),"",0,env));return res;}
  if(path==="/api/profile"&&req.method==="POST"){
  const b=await body(req),p=Game.profile(b);if(b.consent_version!==TERMS)fail(400,"참여 조건을 확인해 주세요.");

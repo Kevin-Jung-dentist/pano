@@ -199,7 +199,11 @@ LoDLocales.ko={
     "paymentResolveFirst": "진행 중인 결제의 상태를 확인하거나 결제 요청을 취소한 뒤 새 세트를 시작해 주세요.",
     "paymentBeforeDelete": "진행 중인 결제 또는 미사용 이용권이 있습니다. 결제 취소·이용권 사용·환불을 마친 뒤 계정을 삭제해 주세요.",
     "paymentContactOwner": "오래된 결제 요청의 확인이 필요합니다. 운영자에게 문의해 주세요.",
-    "paymentInvalidWebhook": "유효하지 않은 PayPal 알림입니다."
+    "paymentInvalidWebhook": "유효하지 않은 PayPal 알림입니다.",
+    "adminOnly": "관리자 계정만 접근할 수 있습니다.",
+    "demoDeleteConfirm": "삭제 확인이 필요합니다.",
+    "demoInvalidRevision": "버전 정보가 올바르지 않습니다.",
+    "demoConflict": "다른 창에서 변경되었습니다. 새로고침 후 다시 수정하세요."
   },
   "demoNav": "판독 예시",
   "seeExample": "판독 화면 살펴보기",
@@ -246,5 +250,21 @@ LoDLocales.ko={
   "paymentCheck": "결제 상태 확인",
   "paymentCancel": "결제 요청 취소",
   "paymentLoginAgain": "결제했던 Google 계정으로 로그인한 뒤 상태를 확인해 주세요.",
-  "paymentSandbox": "PayPal 시험 결제 환경입니다. 실제 이용권 판매가 아닙니다."
+  "paymentSandbox": "PayPal 시험 결제 환경입니다. 실제 이용권 판매가 아닙니다.",
+  "admin": "관리자",
+  "adminTitle": "데모 리더보드 관리",
+  "adminIntro": "가상의 참가자·점수입니다. 이름 옆 (demo) 표시는 유지됩니다. 수정·삭제는 실제 기록과 학습 자료에 영향을 주지 않습니다.",
+  "demoRankNotice": "데모 리그 · 가상의 참가자와 점수이며 실제 순위와 별개입니다.",
+  "deleteAllDemos": "데모 기록 모두 삭제",
+  "reloadDemos": "새로고침",
+  "actions": "관리",
+  "demoCount": "데모 참가자 {n}명",
+  "saveNickname": "이름 저장",
+  "deleteDemo": "삭제",
+  "deleteDemoConfirm": "{name} 데모 기록을 삭제할까요?",
+  "deleteAllDemosConfirm": "데모 기록을 모두 삭제할까요? 실제 참가자 기록은 유지됩니다.",
+  "adminSaved": "변경 내용을 저장했습니다.",
+  "adminReady": "닉네임을 수정한 뒤 이름 저장을 누르세요.",
+  "adminSignIn": "관리자 Google 계정으로 로그인하세요.",
+  "adminOnly": "관리자 계정만 접근할 수 있습니다."
 };
