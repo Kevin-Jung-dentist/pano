@@ -3,7 +3,23 @@
 **웹사이트: https://pano-9kh.pages.dev** · Cloudflare Pages에서 GitHub `main` 변경 시 자동 배포됩니다.
 
 작업 ZIP을 브라우저에서 열고 AI 병소 박스를 사람이 교정하는 도구입니다.
-영상·라벨·모델을 웹 서버로 전송하지 않습니다. 모델 실행과 재학습은 기존 Pano 데스크톱에서 합니다.
+**기존 ZIP 편집기(`/`)는** 영상·라벨·모델을 웹 서버로 전송하지 않습니다. 모델 실행과 재학습은 기존 Pano 데스크톱에서 합니다.
+
+## Pano League (판독 게임)
+
+새 게임은 **[pano-9kh.pages.dev/play/](https://pano-9kh.pages.dev/play/)** 에 있습니다.
+Google 로그인, 닉네임·국가·대학, 10장 판독, 자동 저장, 1병소 1점 채점, 개인·국가·대학 순위를 구현했습니다.
+기본 구성은 검증된 6장 + 채점 제외 4장입니다. 평균은 검증된 영상 수로만 나눕니다.
+`SCORED_PER_ROUND`로 1~10장 사이에서 조절합니다. 유료 결제는 아직 없습니다.
+
+**현재는 조작 연습과 화면 미리보기를 공개합니다.** 실제 로그인에는 Google OAuth와 D1,
+실제 판독에는 비공개 R2 영상 저장소와 검수된 문제은행을 연결해야 합니다.
+[Google 연결·운영자 설정 안내](https://pano-9kh.pages.dev/play/setup.html)에 정확한 입력값과 남은 작업을 적었습니다.
+Google 콘솔이 로드되지 않아 실제 OAuth 왕복 인증은 확인하지 못했습니다.
+
+게임 답변은 서버에 저장되므로 기존 ZIP 편집기와 저장 방식이 다릅니다.
+게임은 Cloudflare Pages Functions + D1 + R2 기반이며 Vercel에는 API를 별도로 이식해야 합니다.
+문제은행·실제 영상·사용자 정보·비밀키는 이 저장소에 포함하지 않습니다.
 
 ## 친구가 하는 일
 
@@ -84,7 +100,7 @@ CSS 좌표·확대 배율·스크롤 위치를 JSON 박스에 넣지 않으며, 
 
 ## 무료 기본 도메인으로 배포
 
-외부 패키지 설치가 필요 없는 정적 HTML/CSS/JS 앱입니다. 배포할 폴더는 **dist**입니다.
+기존 ZIP 편집기는 정적 HTML/CSS/JS로 실행됩니다. 배포 폴더는 **dist**입니다. 판독 게임 API는 `jose` 패키지와 Cloudflare 연결이 필요하며 Git 연동 빌드에서 의존성을 설치합니다.
 
 ### Vercel
 
@@ -107,10 +123,10 @@ CSS 좌표·확대 배율·스크롤 위치를 JSON 박스에 넣지 않으며, 
 
 ~~~sh
 node scripts/check.js
-node --test tests/*.test.js
+node --test tests/core.test.js tests/game.test.mjs
 ~~~
 
-로컬 미리보기는 dist를 정적 HTTP 서버로 실행합니다.
+ZIP 편집기는 dist를 정적 HTTP 서버로 실행합니다. 게임 검증용 `node scripts/game-preview.mjs`는 localhost에서만 동작하는 합성 문제·가짜 계정 서버입니다. `/__qa/start`는 이 로컬 서버에만 존재하며 배포되는 Functions에는 없습니다.
 **기능 연습해 보기**는 합성 도형이며 실제 환자 영상이나 모델 성능 예시가 아닙니다.
 
 작업 형식: ZIP_STORED, labels.json + images/id.png + 오프라인 편집기.

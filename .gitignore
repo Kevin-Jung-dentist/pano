@@ -8,3 +8,7 @@ node_modules/
 __pycache__/
 coverage/
 .local/
+
+.wrangler/
+.dev.vars*
+!.dev.vars.example
