@@ -42,8 +42,15 @@ function main(){
  command(["d1","execute",database,"--env","production","--remote","--file",sqlPath]);console.log("Question bank published. Existing IDs were preserved; changed references need a reviewed version update.");
  }else if(action==="export-candidates"){
  const db=input,out=inside(args[0]||path.join(root,"league/returns/candidates.json"));if(!/^[a-z0-9-]+$/.test(db||""))throw Error("Database name required");
- const result=JSON.parse(command(["d1","execute",db,"--env","production","--remote","--command","SELECT * FROM game_training_candidates ORDER BY submitted_at,round_id,case_id","--json"]));
- const rows=result.flatMap(x=>x.results||[]).map(r=>{const boxes=Game.boxes(JSON.parse(r.boxes_json),{width:r.width,height:r.height,scope:JSON.parse(r.scope_json)});if(r.validation_score<r.quality_threshold)throw Error("Quality gate failed");return {...r,boxes,boxes_json:undefined,coordinate_system:Game.coordinateSystem,review_state:"candidate_needs_review",training_ready:false};});
+ const rows=[];let cursor=null;
+ for(;;){
+ const where=cursor?`WHERE (submitted_at,round_id,case_id)>(${Number(cursor.submitted_at)},${sqlString(cursor.round_id)},${sqlString(cursor.case_id)})`:"";
+ const result=JSON.parse(command(["d1","execute",db,"--env","production","--remote","--command",`SELECT * FROM game_training_candidates ${where} ORDER BY submitted_at,round_id,case_id LIMIT 500`,"--json"]));
+ const page=result.flatMap(x=>x.results||[]);
+ for(const r of page){const boxes=Game.boxes(JSON.parse(r.boxes_json),{width:r.width,height:r.height,scope:JSON.parse(r.scope_json)});if(r.validation_score<r.quality_threshold)throw Error("Quality gate failed");rows.push({...r,boxes,boxes_json:undefined,coordinate_system:Game.coordinateSystem,review_state:"candidate_needs_review",training_ready:false});}
+ if(page.length<500)break;cursor=page.at(-1);
+ }
+
  fs.mkdirSync(path.dirname(out),{recursive:true});const tmp=out+".tmp";fs.writeFileSync(tmp,JSON.stringify({schema:"lod-training-candidates-v1",created_at:new Date().toISOString(),candidates:rows},null,2));fs.renameSync(tmp,out);console.log(JSON.stringify({exported:rows.length,path:out}));
  }else throw Error("Usage: node scripts/bank.mjs prepare MANIFEST | publish MANIFEST DATABASE BUCKET | export-candidates DATABASE OUTPUT");
 }

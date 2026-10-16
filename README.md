@@ -28,11 +28,15 @@
 현재 무료 세트는 **검증 3장 + 미검토 7장**입니다. 시작 안내에는 수치 비율을 강조하지 않고
 일부 문항을 기준으로 채점·피드백한다는 사실을 안내합니다. 개별 정답은 전체 세트 제출 후에만 반환합니다.
 `SCORED_PER_ROUND=3`, `TRAINING_MIN_SCORE=50`입니다.
-미검토 영상은 전역 단독 배정되며, 다른 참가자에게 중복 배정하지 않습니다.
+미검토 영상은 아직 배정한 적 없는 자료를 먼저 사용합니다. 이 자료가 7장 미만이면 남은 새 영상부터 담고, 완료된 불합격 세트의 영상으로 부족분만 채웁니다. 진행 중인 영상과 과거 합격 답안이 있는 영상은 제외합니다. 현재 배정은 영상당 한 명이며 같은 사용자에게 같은 영상은 반복 출제하지 않습니다.
 검증 영상은 참가자 간에 공유하되 같은 계정에 반복 출제하지 않습니다.
 
 무료 세트의 검증 점수가 **50점 이상**일 때만 나머지 답변이 `game_training_candidates`에 포함됩니다.
-문턱값은 세트 시작 시 고정합니다. 후보는 `candidate_needs_review`이며 확정 라벨로 자동 승격하지 않습니다.
+문턱값은 세트 시작 시 고정합니다. 완료 순간의 점수와 합격 여부는 `game_round_quality`에 고정합니다. 후보는 `candidate_needs_review`이며 확정 라벨로 자동 승격하지 않습니다.
+
+운영자는 `F:\pano\합격라벨_가져오기.cmd`를 더블클릭합니다. 결과는 `F:\pano\league\collected\index.html`에서 확인하며 후보별 JSON, 현재 목록 `latest.json`, 시점별 원본 `snapshots/`를 보관합니다. 동일 답안은 round+case의 고정 ID로 중복 생성하지 않고 원본 픽셀 좌표를 그대로 유지합니다. 검수 기록은 `reviews/`에 따로 두며 수집 시 수정하지 않습니다. 기존 Pano 정답이나 학습 실행에는 연결하지 않습니다.
+
+재배정은 최초 미배정 자료가 부족할 때만 허용합니다. 완료된 불합격 답안이 없는 경우 새 영상이 필요합니다. 중도 이탈자를 임의로 만료 처리하지 않습니다. 두 사용자가 같은 재배정 후보를 동시에 선택하면 조건부 예약 갱신과 트랜잭션 롤백으로 한쪽만 성공합니다. 최초 2,942장의 미검토 풀은 420개 완전 세트 분량이며, 재배정이 가능하더라도 합격 자료가 모두 확보되면 더 이상 반복 출제하지 않습니다.
 
 향후 유료 권한은 서버의 `feedback_plan='full'`로 구분하며 **새로 시작하는 10장 모두 검증된 세트**에만 적용됩니다.
 진행 중인 무료 세트나 이전 피드백을 바꾸지 않습니다. 브라우저 요청만으로 권한을 변경할 수 없습니다.
@@ -50,28 +54,27 @@
 Set-Location F:\pano\collab-web
 F:\pano\.venv\Scripts\python.exe -B scripts/prepare-hanoi-bank.py
 node scripts/bank.mjs prepare F:\pano\league\hanoi-bank\manifest.json
-# Cloudflare 인증, D1/R2 연결 및 모든 migration 적용 후:
-node scripts/bank.mjs publish F:\pano\league\hanoi-bank\manifest.json pano-game pano-game-images
-# 완료된 세트 중 기준 통과 답변만 반환:
-node scripts/bank.mjs export-candidates pano-game F:\pano\league\returns\candidates.json
+# R2 없이 무료 Workers Static Assets로 업로드:
+powershell -File scripts/publish-image-bank.ps1
+# 완료된 세트 중 기준 통과 답변만 내려받고 로컬에 수집:
+powershell -File scripts/download-training-candidates.ps1 -OpenReport
 ~~~
 
-업로드 도구는 성공한 R2 객체를 로컬에 기록하여 재개합니다. 영상 업로드가 끝난 다음에만 출제 DB에 등록합니다.
-기존 ID의 정답을 자동 덮어쓰지 않습니다. 재검토한 정답은 새 버전 반영 절차가 필요합니다.
-내보내기는 사용자 닉네임·Google 식별자 없이 내부 작업자 ID와 점수·기준·박스를 보존합니다.
-원본 Pano에 자동 확정/재학습하는 연결은 아직 없으며 검수용 후보 반환 단계입니다.
+영상은 배정 권한을 확인하는 비공개 `pano-images` Worker에 보관합니다. 기존 ID의 정답은 자동 덮어쓰지 않습니다.
+내보내기는 닉네임·Google 식별자 없이 내부 작업자 ID와 점수·기준·박스를 보존합니다.
+원본 Pano에 자동 확정/재학습하는 연결은 없으며 검수용 후보 반환 단계입니다.
 
 ### 운영 연결 상태
 
 Google OAuth 인증 정보는 Cloudflare Production의 암호화된 Secret으로 관리합니다.
-로그인용 D1 `pano-game`에는 0001–0003 마이그레이션을 적용했습니다.
+로그인·출제·후보 수집용 D1 `pano-game`은 0001–0005 마이그레이션을 사용합니다.
 `wrangler.jsonc`의 `env.production`에만 운영 DB를 연결하며 미리보기에는 연결하지 않습니다.
 웹 애플리케이션 클라이언트를 사용합니다. 승인된 리디렉션 URI는
 `https://pano-9kh.pages.dev/api/auth/callback`입니다.
 Google 앱은 현재 테스트 상태이므로 Google 콘솔의 테스트 사용자 설정을 확인하세요.
-R2 및 문제은행 업로드는 아직 연결 전입니다. 로그인 연결과 실제 영상 출제 준비는 별개입니다.
+R2는 활성화하지 않았습니다. 실제 영상 2,970장은 무료 Workers Static Assets로 배포했습니다.
 [운영자 설정 안내](https://pano-9kh.pages.dev/play/setup)를 참고하세요.
-Cloudflare CLI는 미인증 상태입니다. 후속 마이그레이션은 인증 후
+Cloudflare CLI는 운영자 PC의 F 드라이브 설정에서 인증을 사용합니다. 후속 마이그레이션은
 `node node_modules/wrangler/bin/wrangler.js d1 migrations apply pano-game --remote --env production`으로 적용합니다.
 
 기존 ZIP 편집기와 달리 게임 답변은 서버에 저장됩니다. Cloudflare Pages Functions + D1 + R2 기반이며

@@ -36,13 +36,26 @@ async function startRound(db,u,env){
  const {total}=targets(env),scored=u.feedback_plan==="full"?total:targets(env).scored;
  const threshold=Number(env.TRAINING_MIN_SCORE??50);if(!Number.isFinite(threshold)||threshold<0||threshold>100)fail(503,"출제 비율 설정을 확인하세요.");
  attempt: for(let retry=0;retry<3;retry++){
- const rows=[];
- for(const [kind,n] of [["verified",scored],["unscored",total-scored]]){
- if(!n)continue;
- const {results}=await query(db,`SELECT c.* FROM game_cases c WHERE c.active=1 AND c.kind=? AND NOT EXISTS(SELECT 1 FROM game_round_cases rc WHERE rc.case_id=c.id AND rc.user_id=?) AND (c.kind='verified' OR NOT EXISTS(SELECT 1 FROM game_claims cl WHERE cl.case_id=c.id)) ORDER BY RANDOM() LIMIT ?`,kind,u.id,n).all();
- if(results.length<n)fail(409,"아직 풀지 않은 검증 문제와 도전 문제가 충분하지 않습니다. 새 문제를 준비하고 있습니다.");
- rows.push(...results);
+ const rows=[],freshIds=[];
+ const gold=await query(db,`SELECT c.* FROM game_cases c WHERE c.active=1 AND c.kind='verified' AND NOT EXISTS(SELECT 1 FROM game_round_cases rc WHERE rc.case_id=c.id AND rc.user_id=?) ORDER BY RANDOM() LIMIT ?`,u.id,scored).all();
+ if(gold.results.length<scored)fail(409,"아직 풀지 않은 검증 문제와 도전 문제가 충분하지 않습니다. 새 문제를 준비하고 있습니다.");
+ rows.push(...gold.results);
+ const needed=total-scored;
+ if(needed){
+ const fresh=await query(db,`SELECT c.* FROM game_cases c WHERE c.active=1 AND c.kind='unscored' AND NOT EXISTS(SELECT 1 FROM game_claims cl WHERE cl.case_id=c.id) AND NOT EXISTS(SELECT 1 FROM game_round_cases rc WHERE rc.case_id=c.id) ORDER BY RANDOM() LIMIT ?`,needed).all();
+ freshIds.push(...fresh.results.map(c=>c.id));rows.push(...fresh.results);
+ if(fresh.results.length<needed){
+ const retry=await query(db,`SELECT c.*,cl.round_id AS previous_round,cl.user_id AS previous_user FROM game_cases c
+ JOIN game_claims cl ON cl.case_id=c.id JOIN game_rounds old ON old.id=cl.round_id JOIN game_round_quality q ON q.round_id=old.id
+ WHERE c.active=1 AND c.kind='unscored' AND old.state='complete' AND old.rule_version=?
+ AND q.rule_version=old.rule_version AND q.eligible=0 AND q.reference_count>0 AND q.score IS NOT NULL
+ AND NOT EXISTS(SELECT 1 FROM game_round_cases rc WHERE rc.case_id=c.id AND rc.user_id=?)
+ AND NOT EXISTS(SELECT 1 FROM game_round_cases done JOIN game_round_quality pass ON pass.round_id=done.round_id WHERE done.case_id=c.id AND pass.eligible=1)
+ ORDER BY q.evaluated_at,RANDOM() LIMIT ?`,Game.version,u.id,needed-fresh.results.length).all();
+ rows.push(...retry.results);
  }
+ }
+ if(rows.length<total)fail(409,"아직 풀지 않은 검증 문제와 도전 문제가 충분하지 않습니다. 새 문제를 준비하고 있습니다.");
  if(!rows.some(c=>c.kind==="verified"&&parse(c.reference_json)?.length))fail(409,"채점 세트에 정답 병소가 있는 영상이 필요합니다.");
  // Random order; do not disclose which cases are graded until all ten are submitted.
  for(let i=rows.length-1;i>0;i--){const a=new Uint32Array(1);crypto.getRandomValues(a);const j=a[0]%(i+1);[rows[i],rows[j]]=[rows[j],rows[i]];}
@@ -52,7 +65,20 @@ async function startRound(db,u,env){
  const c=rows[i];
  statements.push(query(db,"INSERT INTO game_round_cases(round_id,case_id,user_id,position,kind,reference_json,reference_version,explanation) VALUES(?,?,?,?,?,?,?,?)",rid,c.id,u.id,i,c.kind,c.reference_json,c.reference_version,c.explanation));
  if(c.kind==="unscored"){
- statements.push(query(db,"INSERT INTO game_claims VALUES(?,?,?,?)",c.id,0,rid,u.id));
+ if(!c.previous_round)statements.push(query(db,"INSERT INTO game_claims VALUES(?,?,?,?)",c.id,0,rid,u.id));
+ else{
+ // Recheck global fresh-first ordering inside the same atomic batch. A stale claim
+ // deliberately violates NOT NULL, rolling back the WHOLE round before retrying.
+ const outside=freshIds.length?`AND fresh.id NOT IN (${freshIds.map(()=>"?").join(",")})`:"";
+ const noFresh=`NOT EXISTS(SELECT 1 FROM game_cases fresh WHERE fresh.active=1 AND fresh.kind='unscored'
+ AND NOT EXISTS(SELECT 1 FROM game_claims cl WHERE cl.case_id=fresh.id)
+ AND NOT EXISTS(SELECT 1 FROM game_round_cases rc WHERE rc.case_id=fresh.id) ${outside})`;
+ statements.push(query(db,`INSERT INTO game_claims(case_id,slot,round_id,user_id) VALUES(?,0,CASE WHEN ${noFresh} THEN ? ELSE NULL END,?)
+ ON CONFLICT(case_id,slot) DO UPDATE SET round_id=CASE WHEN game_claims.round_id=? AND game_claims.user_id=?
+ AND EXISTS(SELECT 1 FROM game_round_quality q JOIN game_rounds r ON r.id=q.round_id WHERE q.round_id=game_claims.round_id AND r.state='complete' AND q.eligible=0 AND q.score IS NOT NULL AND r.rule_version=q.rule_version)
+ AND NOT EXISTS(SELECT 1 FROM game_round_cases done JOIN game_round_quality pass ON pass.round_id=done.round_id WHERE done.case_id=game_claims.case_id AND pass.eligible=1)
+ THEN excluded.round_id ELSE NULL END,user_id=excluded.user_id`,c.id,...freshIds,rid,u.id,c.previous_round,c.previous_user));
+ }
  }
  }
  try{await db.batch(statements);return getRound(db,rid,u.id);}catch(e){const active=await query(db,"SELECT id FROM game_rounds WHERE user_id=? AND state='active'",u.id).first();if(active)return getRound(db,active.id,u.id);if(retry===2)throw e;}
