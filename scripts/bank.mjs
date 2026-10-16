@@ -39,10 +39,10 @@ function main(){
  const state=fs.existsSync(statePath)?JSON.parse(fs.readFileSync(statePath,"utf8")):{digest,uploaded:[]};if(state.digest!==digest)throw Error("Manifest changed; review the old upload state before restarting");
  const uploaded=new Set(state.uploaded);
  for(const c of manifest.cases){if(uploaded.has(c.object_key))continue;command(["r2","object","put",bucket+"/"+c.object_key,"--file",inside(c.local_image),"--content-type","image/png","--remote"]);uploaded.add(c.object_key);const tmp=statePath+".tmp";fs.writeFileSync(tmp,JSON.stringify({digest,uploaded:[...uploaded]}));fs.renameSync(tmp,statePath);console.log("Images uploaded: "+uploaded.size+"/"+manifest.cases.length);}
- command(["d1","execute",database,"--remote","--file",sqlPath]);console.log("Question bank published. Existing IDs were preserved; changed references need a reviewed version update.");
+ command(["d1","execute",database,"--env","production","--remote","--file",sqlPath]);console.log("Question bank published. Existing IDs were preserved; changed references need a reviewed version update.");
  }else if(action==="export-candidates"){
  const db=input,out=inside(args[0]||path.join(root,"league/returns/candidates.json"));if(!/^[a-z0-9-]+$/.test(db||""))throw Error("Database name required");
- const result=JSON.parse(command(["d1","execute",db,"--remote","--command","SELECT * FROM game_training_candidates ORDER BY submitted_at,round_id,case_id","--json"]));
+ const result=JSON.parse(command(["d1","execute",db,"--env","production","--remote","--command","SELECT * FROM game_training_candidates ORDER BY submitted_at,round_id,case_id","--json"]));
  const rows=result.flatMap(x=>x.results||[]).map(r=>{const boxes=Game.boxes(JSON.parse(r.boxes_json),{width:r.width,height:r.height,scope:JSON.parse(r.scope_json)});if(r.validation_score<r.quality_threshold)throw Error("Quality gate failed");return {...r,boxes,boxes_json:undefined,coordinate_system:Game.coordinateSystem,review_state:"candidate_needs_review",training_ready:false};});
  fs.mkdirSync(path.dirname(out),{recursive:true});const tmp=out+".tmp";fs.writeFileSync(tmp,JSON.stringify({schema:"lod-training-candidates-v1",created_at:new Date().toISOString(),candidates:rows},null,2));fs.renameSync(tmp,out);console.log(JSON.stringify({exported:rows.length,path:out}));
  }else throw Error("Usage: node scripts/bank.mjs prepare MANIFEST | publish MANIFEST DATABASE BUCKET | export-candidates DATABASE OUTPUT");
