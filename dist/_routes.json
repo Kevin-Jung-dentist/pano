@@ -3,7 +3,13 @@
   "include": [
     "/api/*",
     "/admin",
-    "/admin/*"
+    "/admin/*",
+    "/%*",
+    "/a%*",
+    "/ad%*",
+    "/adm%*",
+    "/admi%*",
+    "/admin%*"
   ],
   "exclude": []
 }

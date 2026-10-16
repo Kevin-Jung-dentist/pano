@@ -38,5 +38,8 @@ test('owner receives private uncached content, normal routes bypass guard, missi
  for(const env of [{}, {...h.env,DB:null}, {...h.env,APP_ORIGIN:'https://wrong.example'}])assert.equal((await guardAdminPage(req,env,()=>new Response('private'))).status,404);
  assert.equal(await (await guardAdminPage(new Request(h.env.APP_ORIGIN+'/api/config'),{},()=>new Response('normal'))).text(),'normal');
  const routes=JSON.parse(fs.readFileSync('dist/_routes.json','utf8'));assert.ok(routes.include.includes('/admin'));assert.ok(routes.include.includes('/admin/*'));
+ // Previously public assets may remain in edge caches. Invoke authorization even
+ // when an administrator path uses percent encoding before its first slash.
+ for(const path of ['/%61dmin/new/','/a%64min/','/ad%6din/','/adm%69n/','/admi%6e/','/admin%2fnew/'])assert.ok(routes.include.some(pattern=>new RegExp('^'+pattern.replaceAll('*','.*')+'$').test(path)),path);
  assert.ok(!fs.readFileSync('dist/index.html','utf8').includes('admin-link'));
 });
