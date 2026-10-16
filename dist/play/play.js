@@ -1,5 +1,6 @@
 "use strict";
 const G=window.PanoGame,I=window.LoDI18n,t=I.t,$=id=>document.getElementById(id);
+let paymentAccount={credits:0,pending:null};
 let config={scored:3,total:10},me=null,round=null,current=null,practice=false,group="individual",saving=Promise.resolve(),saveError=null,dirty=false,submitting=false,statusKey="loading";
 function notice(message){$("notice").textContent=message;$("notice").hidden=!message;}
 function status(key){statusKey=key;$("draft-status").textContent=t(key);}
@@ -21,7 +22,7 @@ function renderAnswers(){
  $("remove-box").disabled=!editor.selected||submitting;
 }
 function accountLabels(){$("account").hidden=!me;$("account").textContent=me?.nickname||t("profile");$("login-top").hidden=!!me;$("start").textContent=t(me?"start":"startLogin");}
-async function refreshMe(){me=(await api("me")).user;accountLabels();await loadHistory();}
+async function refreshMe(){const data=await api("me");me=data.user;paymentAccount=data.payments||{credits:0,pending:null};accountLabels();payments.render();await loadHistory();}
 function fillProfile(){if(!me)return;panel("profile-panel");$("nickname").value=me.nickname||"";$("country").value=me.country||"";$("university").value=me.university||"";$("terms").checked=me.profile_complete;}
 async function loadHistory(){
  $("history-panel").hidden=true;$("history-list").replaceChildren();if(!me?.profile_complete)return;
@@ -33,12 +34,12 @@ async function loadHistory(){
  $("history-list").append(row);}
  }catch{notice(t("historyFailed"));}
 }
-async function begin(){await saving;if(dirty){notice(t("unsaved"));return;}notice("");$("confirm-start").textContent=t(me?.feedback_plan==="full"?"beginFull":"beginFree");$("before-start").showModal();}
+async function begin(){await saving;if(dirty){notice(t("unsaved"));return;}notice("");try{await refreshMe();}catch(e){notice(e.message);return;}payments.render();$("confirm-start").textContent=t(me?.feedback_plan==="full"||paymentAccount.credits>0?"beginFull":"beginFree");$("before-start").showModal();}
 async function launch(){
  $("before-start").close();
  if(!me){if(!config.auth_ready){notice(t("notReady"));return;}location.assign("/api/auth/start");return;}
  if(!me.profile_complete){fillProfile();return;}
- try{$("start").disabled=true;practice=false;round=await api("rounds",{});await showNext();}catch(e){notice(e.message);}finally{$("start").disabled=false;}
+ try{$("start").disabled=true;practice=false;round=await api("rounds",{});await refreshMe();await showNext();}catch(e){notice(e.message);}finally{$("start").disabled=false;}
 }
 function gameLabels(){if(!current)return;$("case-title").textContent=t("caseTitle",{n:current.position+1,total:round.total_target});$("round-label").textContent=t(practice?"practiceLabel":"roundLabel");$("draft-status").textContent=t(statusKey);$("hide-boxes").textContent=t(editor.hidden?"show":"hide");if(practice)$("attribution").textContent=t("practiceAttribution");}
 async function showNext(){
@@ -105,8 +106,7 @@ async function startPractice(){
 }
 $("practice").onclick=()=>startPractice().catch(e=>notice(I.error(e.message)));$("start").onclick=begin;$("another").onclick=()=>{if(practice)startPractice().catch(e=>notice(I.error(e.message)));else{panel("landing");begin();}};
 $("confirm-start").onclick=launch;$("cancel-start").onclick=()=>$("before-start").close();
-function premium(){$("before-start").close();$("premium-dialog").showModal();}
-$("premium-start").onclick=premium;$("premium-results").onclick=premium;$("close-premium").onclick=()=>$("premium-dialog").close();
+const payments=LoDPayments({api,state:()=>({config,me,paymentAccount}),refresh:refreshMe,profile:fillProfile,launch});
 $("account").onclick=fillProfile;
 $("profile-form").onsubmit=async e=>{e.preventDefault();try{const p=G.profile({nickname:$("nickname").value,country:$("country").value,university:$("university").value});if(!$("terms").checked)throw Error(t("checkTerms"));me=(await api("profile",{...p,consent_version:config.terms_version})).user;await refreshMe();panel("landing");notice(t("profileSaved"));}catch(err){notice(I.error(err.message));}};
 $("logout").onclick=async()=>{await saving;try{await api("logout",{});me=null;await refreshMe();panel("landing");}catch(e){notice(e.message);}};
@@ -122,4 +122,4 @@ window.addEventListener("beforeunload",e=>{if(dirty&&!practice){e.preventDefault
 function countryOptions(){const old=$("country").value,dn=new Intl.DisplayNames([I.language],{type:"region"});$("country").replaceChildren();const blank=document.createElement("option");blank.value="";blank.textContent=t("select");$("country").append(blank);G.countryCodes.map(c=>({code:c,name:dn.of(c)})).sort((a,b)=>a.name.localeCompare(b.name,I.language)).forEach(c=>{const o=document.createElement("option");o.value=c.code;o.textContent=c.name+" ("+c.code+")";$("country").append(o);});$("country").value=old;}
 function availability(){$("availability").textContent=t(config.auth_ready?(config.game_ready?"ready":"bankPending"):"notReady");}
 document.addEventListener("lod-language",()=>{countryOptions();accountLabels();availability();gameLabels();renderAnswers();notice("");loadHistory();if(round?.state==="complete"&&!$("results-panel").hidden)showResults(false);else leaderboard();});
-(async()=>{countryOptions();availability();try{config=await api("config");availability();if(!config.auth_ready){$("login-top").href="#";$("login-top").onclick=e=>{e.preventDefault();notice(t("notReady"));};}await refreshMe();if(me&&!me.profile_complete)fillProfile();await leaderboard();}catch(e){notice(e.message);}if(new URLSearchParams(location.search).get("login")==="failed")notice(t("loginFailed"));})();
+(async()=>{countryOptions();availability();try{config=await api("config");availability();if(!config.auth_ready){$("login-top").href="#";$("login-top").onclick=e=>{e.preventDefault();notice(t("notReady"));};}await refreshMe();if(me&&!me.profile_complete)fillProfile();await leaderboard();payments.render();await payments.returned();}catch(e){notice(e.message);}if(new URLSearchParams(location.search).get("login")==="failed")notice(t("loginFailed"));})();

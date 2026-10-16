@@ -5,14 +5,18 @@
   "vars": {
     "APP_ORIGIN": "https://pano-9kh.pages.dev",
     "SCORED_PER_ROUND": "3",
-    "TRAINING_MIN_SCORE": "50"
+    "TRAINING_MIN_SCORE": "50",
+    "PAYPAL_ENABLED": "false",
+    "PAYPAL_PRICE_USD": "19.00"
   },
   "env": {
     "production": {
       "vars": {
         "APP_ORIGIN": "https://pano-9kh.pages.dev",
         "SCORED_PER_ROUND": "3",
-        "TRAINING_MIN_SCORE": "50"
+        "TRAINING_MIN_SCORE": "50",
+        "PAYPAL_ENABLED": "false",
+        "PAYPAL_PRICE_USD": "19.00"
       },
       "d1_databases": [
         {
@@ -33,7 +37,9 @@
       "vars": {
         "APP_ORIGIN": "https://pano-9kh.pages.dev",
         "SCORED_PER_ROUND": "3",
-        "TRAINING_MIN_SCORE": "50"
+        "TRAINING_MIN_SCORE": "50",
+        "PAYPAL_ENABLED": "false",
+        "PAYPAL_PRICE_USD": "19.00"
       },
       "d1_databases": [],
       "services": []

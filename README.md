@@ -42,9 +42,9 @@
 
 재배정은 최초 미배정 자료가 부족할 때만 허용합니다. 완료된 불합격 답안이 없는 경우 새 영상이 필요합니다. 중도 이탈자를 임의로 만료 처리하지 않습니다. 두 사용자가 같은 재배정 후보를 동시에 선택하면 조건부 예약 갱신과 트랜잭션 롤백으로 한쪽만 성공합니다. 최초 2,942장의 미검토 풀은 420개 완전 세트 분량이며, 재배정이 가능하더라도 합격 자료가 모두 확보되면 더 이상 반복 출제하지 않습니다.
 
-향후 유료 권한은 서버의 `feedback_plan='full'`로 구분하며 **새로 시작하는 10장 모두 검증된 세트**에만 적용됩니다.
+유료 상품은 **10문제 전체 피드백 1세트 / USD 19 / 1회 결제**입니다. 자동 갱신은 없습니다. 서버에서 확인된 결제 1건은 새로 시작하는 10장 모두 검증된 세트 1개에만 사용합니다. 기존 운영자 수동 권한 `feedback_plan='full'`도 유지합니다.
 진행 중인 무료 세트나 이전 피드백을 바꾸지 않습니다. 브라우저 요청만으로 권한을 변경할 수 없습니다.
-**결제 제공자·결제·권한 발급은 아직 연결 전입니다.** 화면에서도 결제 준비 중으로 안내합니다.
+**PayPal 주문·확인·웹훅·1회 이용권 처리는 구현했으며 실제 계정은 아직 연결 전입니다.** `PAYPAL_ENABLED=false`로 배포하며 화면에도 연결 준비 중으로 표시합니다. 실제 PayPal Sandbox 거래 시험은 계정 연결 후 진행해야 합니다.
 
 ### 실제 Hanoi 문제은행
 
@@ -71,7 +71,7 @@ powershell -File scripts/download-training-candidates.ps1 -OpenReport
 ### 운영 연결 상태
 
 Google OAuth 인증 정보는 Cloudflare Production의 암호화된 Secret으로 관리합니다.
-로그인·출제·후보 수집용 D1 `pano-game`은 0001–0005 마이그레이션을 사용합니다.
+로그인·출제·후보 수집용 D1 `pano-game`은 0001–0006 마이그레이션을 사용합니다.
 `wrangler.jsonc`의 `env.production`에만 운영 DB를 연결하며 미리보기에는 연결하지 않습니다.
 웹 애플리케이션 클라이언트를 사용합니다. 승인된 리디렉션 URI는
 `https://pano-9kh.pages.dev/api/auth/callback`입니다.
@@ -197,3 +197,35 @@ ZIP 편집기는 dist를 정적 HTTP 서버로 실행합니다. 게임 검증용
 백엔드는 ID·좌표·라벨 의미·완료 상태·배정 토큰·원본 버전을 검사합니다.
 잘못된 결과는 반영하지 않고, 영상별 버전 충돌은 따로 보고합니다. DB 오류 시 전체 병합 트랜잭션을 되돌립니다.
 공개 코드를 수정하더라도 영상/라벨 파일을 저장소에 커밋하지 마세요.
+
+
+## PayPal 계정 연결 (현재 실제 결제 OFF)
+
+가격은 서버 설정 `PAYPAL_PRICE_USD=19.00`에서 정합니다. 브라우저가 보내는 금액·계정·이용권 정보는 신뢰하지 않습니다.
+아직 풀지 않은 검증 영상이 10장 미만이면 주문을 만들지 않으며, 진행 중인 판독 세트를 먼저 마쳐야 합니다.
+미사용 이용권은 한 개까지만 판매합니다. 이용권 소비와 새 세트 생성은 같은 DB 트랜잭션이며, 이미 시작한 무료 세트와 이전 결과를 변경하지 않습니다.
+
+계정 준비 후 연결 순서:
+
+1. PayPal Business 계정의 Developer Dashboard에서 REST 앱을 준비합니다. 일반 PayPal 로그인 비밀번호는 필요하지 않습니다.
+2. 먼저 **별도 QA DB/배포**에 Sandbox Client ID, Secret, Merchant ID, Webhook ID를 연결하여 실제 테스트 구매·취소·환불을 확인합니다. 운영 DB에 Sandbox 키를 넣지 않습니다.
+3. 같은 REST 앱에 웹훅 URL `https://pano-9kh.pages.dev/api/payments/paypal/webhook`을 등록합니다. Sandbox 시험 때는 QA 배포 주소를 사용합니다.
+4. 이벤트는 `CHECKOUT.ORDER.APPROVED`, `PAYMENT.CAPTURE.COMPLETED`, `PAYMENT.CAPTURE.PENDING`, `PAYMENT.CAPTURE.DENIED`, `PAYMENT.CAPTURE.REFUNDED`, `PAYMENT.CAPTURE.REVERSED`를 선택합니다.
+5. Cloudflare Production Secret에 `PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET`, `PAYPAL_MERCHANT_ID`, `PAYPAL_WEBHOOK_ID`를 저장합니다. 공개 코드·채팅·로그에 비밀키를 기록하지 않습니다.
+6. 운영자 연락처와 환불 안내, 참여 조건의 결제 연결 상태를 최종 확인하고 `wrangler.jsonc` Production vars에 `PAYPAL_MODE=live`, `PAYPAL_ENABLED=true`, `PAYPAL_PRICE_USD=19.00`을 설정해 배포합니다. 현재는 `false`를 유지합니다.
+
+서버 API:
+
+- `POST /api/payments/paypal/orders`: 로그인·프로필·상품 조건 동의 후 주문 생성, PayPal 승인 URL 반환.
+- `POST /api/payments/paypal/orders/:id/capture`: 본인 주문의 승인 상태 및 결제를 서버에서 확인.
+- `GET /api/payments/paypal/orders/:id`: 본인 주문의 현재 상태 확인.
+- `POST /api/payments/paypal/orders/:id/cancel`: 아직 처리되지 않은 결제 요청 취소. 이미 결제 처리 중인 요청은 상태 확인으로 복구합니다.
+- `POST /api/payments/paypal/webhook`: PayPal 서명 확인 후 결제 완료·환불·취소 반영. 브라우저를 닫아도 이벤트로 복구합니다.
+
+`game_payments`에 주문·수취인·USD 금액·환경·상태를 고정하고 `game_payment_uses`에 소비한 세트를 기록합니다.
+카드번호·PayPal 비밀번호·구매자 주소는 저장하지 않습니다. 결제 기록에는 PayPal 주문/캡처 ID와 상품 조건 동의 버전이 포함됩니다.
+환불/결제 회수는 미사용 권한을 취소하며 이미 제출한 판독 결과는 덮어쓰지 않습니다. 실제 환불 송금 버튼은 만들지 않았습니다. 운영자가 PayPal에서 환불하면 검증된 알림으로 반영됩니다.
+계정 삭제는 미결제/미사용 이용권 해결 후 가능하며, 사용한 결제 기록은 Google 계정 연결을 제거한 채 보관합니다. 운영자는 실제 서비스 시작 전 보관기간을 정해야 합니다.
+
+연결 전 검증은 PayPal 응답 모사를 사용합니다. 실제 Sandbox/LIVE 결제가 성공했다는 의미가 아닙니다.
+[PayPal Orders integration](https://developer.paypal.com/whats-an-order/), [Idempotency](https://developer.paypal.com/api/rest/reference/idempotency/), [Webhook verification](https://developer.paypal.com/api/rest/webhooks/rest/)을 기준으로 구현했습니다.

@@ -1,5 +1,6 @@
 import Game from "../dist/game-core.js";
 import * as Auth from "./auth.mjs";
+import * as Payments from "./payments.mjs";
 const TERMS="2026-10-17-v2";
 const fail=(status,message)=>{throw Object.assign(new Error(message),{status});};
 const json=(data,status=200)=>new Response(JSON.stringify(data),{status,headers:{"Content-Type":"application/json; charset=utf-8","Cache-Control":"no-store","X-Content-Type-Options":"nosniff"}});
@@ -33,7 +34,9 @@ async function startRound(db,u,env){
  if(!env.IMAGES&&!env.IMAGE_SERVICE)fail(503,"영상 저장소를 연결하지 않았습니다.");
  const existing=await query(db,"SELECT id FROM game_rounds WHERE user_id=? AND state='active'",u.id).first();
  if(existing)return getRound(db,existing.id,u.id);
- const {total}=targets(env),scored=u.feedback_plan==="full"?total:targets(env).scored;
+ if(await Payments.openOrder(db,u.id))fail(409,"paymentResolveFirst");
+ const paid=await Payments.credit(db,u.id),full=u.feedback_plan==="full"||!!paid;
+ const {total}=targets(env),scored=full?total:targets(env).scored;
  const threshold=Number(env.TRAINING_MIN_SCORE??50);if(!Number.isFinite(threshold)||threshold<0||threshold>100)fail(503,"출제 비율 설정을 확인하세요.");
  attempt: for(let retry=0;retry<3;retry++){
  const rows=[],freshIds=[];
@@ -60,7 +63,8 @@ async function startRound(db,u,env){
  // Random order; do not disclose which cases are graded until all ten are submitted.
  for(let i=rows.length-1;i>0;i--){const a=new Uint32Array(1);crypto.getRandomValues(a);const j=a[0]%(i+1);[rows[i],rows[j]]=[rows[j],rows[i]];}
  const rid=crypto.randomUUID();
- const statements=[query(db,"INSERT INTO game_rounds(id,user_id,scored_target,total_target,rule_version,country,university,university_key,created_at,feedback_mode,quality_threshold) VALUES(?,?,?,?,?,?,?,?,?,?,?)",rid,u.id,scored,total,Game.version,u.country,u.university,u.university_key,Auth.now(),u.feedback_plan==="full"?"full":"free",threshold)];
+ const statements=[query(db,"INSERT INTO game_rounds(id,user_id,scored_target,total_target,rule_version,country,university,university_key,created_at,feedback_mode,quality_threshold) VALUES(?,?,?,?,?,?,?,?,?,?,?)",rid,u.id,scored,total,Game.version,u.country,u.university,u.university_key,Auth.now(),full?"full":"free",threshold)];
+ if(paid)statements.push(Payments.useCredit(db,paid,u.id,rid));
  for(let i=0;i<rows.length;i++){
  const c=rows[i];
  statements.push(query(db,"INSERT INTO game_round_cases(round_id,case_id,user_id,position,kind,reference_json,reference_version,explanation) VALUES(?,?,?,?,?,?,?,?)",rid,c.id,u.id,i,c.kind,c.reference_json,c.reference_version,c.explanation));
@@ -137,15 +141,16 @@ async function history(db,uid){
 export async function handle(req,env){
  try{
  const url=new URL(req.url),path=url.pathname;
- if(path==="/api/config")return json({auth_ready:Auth.ready(env),game_ready:await bankReady(env),...targets(env),terms_version:TERMS,rule_version:Game.version,payments_ready:false});
+ if(path==="/api/config")return json({auth_ready:Auth.ready(env),game_ready:await bankReady(env),...targets(env),terms_version:TERMS,rule_version:Game.version,payments_ready:Payments.publicConfig(env).ready,payments:Payments.publicConfig(env)});
  if(!env.APP_ORIGIN)fail(503,"서버 연결을 준비하고 있습니다.");
  if(url.origin!==env.APP_ORIGIN)fail(403,"공식 게임 주소에서 접속하세요.");
+ if(path==="/api/payments/paypal/webhook"&&req.method==="POST")return json(await Payments.webhook(req,env));
  if(!["GET","HEAD"].includes(req.method)){
  if(req.headers.get("Origin")!==env.APP_ORIGIN||!req.headers.get("Content-Type")?.startsWith("application/json"))fail(403,"같은 사이트에서 요청해 주세요.");
  }
  if(path==="/api/auth/start"&&req.method==="GET"){if(!Auth.ready(env))fail(503,"Google 로그인 연결을 준비하고 있습니다.");return Auth.start(env);}
  if(path==="/api/auth/callback"&&req.method==="GET"){if(!Auth.ready(env))fail(503,"Google 로그인 연결을 준비하고 있습니다.");try{return await Auth.callback(req,env);}catch{return new Response(null,{status:302,headers:{Location:env.APP_ORIGIN+"/?login=failed","Cache-Control":"no-store"}});}}
- if(path==="/api/me"&&req.method==="GET"){const u=env.DB?await Auth.session(req,env):null;return json({user:pub(u),stats:u?await stats(env.DB,u.id):null});}
+ if(path==="/api/me"&&req.method==="GET"){const u=env.DB?await Auth.session(req,env):null;return json({user:pub(u),stats:u?await stats(env.DB,u.id):null,payments:u?await Payments.account(env.DB,u.id):null});}
  if(path==="/api/leaderboard"&&req.method==="GET"){if(!env.DB)return json({entries:[]});const mode=url.searchParams.get("group")||"individual";if(!["individual","country","university"].includes(mode))fail(400,"순위 범위 오류");return json({entries:await leaders(env.DB,mode)});}
  if(/^\/api\/images\/[a-zA-Z0-9_-]+$/.test(path)&&req.method==="GET"&&env.IMAGE_SERVICE)return await env.IMAGE_SERVICE.fetch(req);
  const u=await user(req,env,false),db=env.DB;
@@ -158,6 +163,7 @@ export async function handle(req,env){
  return json({user:pub(await query(db,"SELECT * FROM game_users WHERE id=?",u.id).first())});
  }
  if(path==="/api/account/delete"&&req.method==="POST"){
+ if(await Payments.openOrder(db,u.id)||await Payments.credit(db,u.id))fail(409,"paymentBeforeDelete");
  const b=await body(req);if(b.confirm!=="DELETE")fail(400,"삭제 확인이 필요합니다.");
  await db.batch([
  query(db,"DELETE FROM game_claims WHERE user_id=?",u.id),
@@ -168,6 +174,13 @@ export async function handle(req,env){
  const res=json({ok:true});res.headers.set("Set-Cookie",Auth.setCookie(Auth.cookieName(env),"",0,env));return res;
  }
  if(!u.consent_at)fail(409,"프로필 설정을 먼저 완료하세요.");
+ if(path==="/api/payments/paypal/orders"&&req.method==="POST")return json(await Payments.create(env,u,await body(req)));
+ const payment=path.match(/^\/api\/payments\/paypal\/orders\/([a-zA-Z0-9-]+)(?:\/(capture|cancel))?$/);
+ if(payment){
+  if(req.method==="GET"&&!payment[2])return json(await Payments.get(env,payment[1],u.id));
+  if(req.method==="POST"&&payment[2]==="capture")return json(await Payments.confirm(env,payment[1],u.id));
+  if(req.method==="POST"&&payment[2]==="cancel")return json(await Payments.cancel(env,payment[1],u.id));
+ }
  if(path==="/api/rounds"&&req.method==="GET")return json({rounds:await history(db,u.id)});
  if(path==="/api/rounds"&&req.method==="POST")return json(await startRound(db,u,env));
  const rid=path.match(/^\/api\/rounds\/([a-zA-Z0-9-]+)$/);
