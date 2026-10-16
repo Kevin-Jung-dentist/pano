@@ -2,8 +2,8 @@
 <html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>League of Doctors · Google 연결 안내</title><link rel="stylesheet" href="play.css"><style>pre{background:#eef0e7;padding:18px;white-space:pre-wrap;overflow-wrap:anywhere;font-size:14px}td,th{padding:10px;text-align:left;vertical-align:top;border-bottom:1px solid #ddd}table{width:100%;overflow-wrap:anywhere}.note{border-left:4px solid #586e51;padding:12px 20px;background:#eef0e7}code{overflow-wrap:anywhere}</style></head>
 <body><header><a class="brand" href="/play/"><b>p.</b> League of Doctors</a><a href="/play/">게임으로 돌아가기</a></header><main class="terms">
 <p>운영자용 · 2026-10-17</p><h1>Google 로그인 연결하기</h1>
-<p>Google Cloud 콘솔이 다시 열릴 때 아래 순서로 설정하면 됩니다. 현재 게임의 조작 연습은 사용할 수 있지만, 실제 로그인·영상 출제는 아직 연결 전입니다. 콘솔 오류의 원인이 봇 차단인지 확인되지는 않았습니다.</p>
-<div class="note">지금 준비할 것은 Google <strong>클라이언트 ID</strong>와 <strong>클라이언트 보안 비밀</strong>입니다. 비밀값은 Cloudflare에 직접 저장하세요. GitHub, 대화, 공개 파일에는 넣지 않습니다.</div>
+<p>Google 클라이언트 정보를 Cloudflare 운영 환경의 암호화된 Secret으로 등록하고 로그인용 D1 데이터베이스를 연결했습니다. 아래 내용은 설정을 다시 확인하거나 변경할 때 사용하는 안내입니다. 실제 영상 출제에 필요한 비공개 영상 저장소와 문제은행 업로드는 별도로 준비해야 합니다.</p>
+<div class="note">Google 앱은 현재 <strong>테스트 상태</strong>입니다. Google 콘솔의 <strong>Audience / 대상 → 테스트 사용자</strong>에 로그인할 계정이 등록되어 있는지 확인하세요. 모든 사용자에게 공개하려면 Google의 게시 요건을 확인해야 합니다. 비밀값은 Cloudflare Secret으로만 관리합니다.</div>
 
 <h2>1. Google에서 웹 앱 인증 만들기</h2>
 <ol>
@@ -33,28 +33,22 @@
 <p>기본 사이트 주소와 비율은 저장소의 <code>wrangler.jsonc</code>에 있습니다. <code>APP_ORIGIN=https://pano-9kh.pages.dev</code>, <code>SCORED_PER_ROUND=3</code>입니다. 주소 끝 슬래시는 없습니다.</p>
 
 <h2>3. 실제 게임을 켜기 위한 저장소 연결</h2>
-<p>Google 인증만 붙여서는 영상과 결과를 저장할 수 없습니다. 다음 단계는 운영자 또는 개발자가 한 번 설정합니다. 아직 Cloudflare에 DB·영상 저장소를 만들지 않았고 실제 영상도 업로드하지 않았습니다.</p>
-<ol><li>Cloudflare의 <strong>D1</strong>에서 <strong>pano-game</strong> 데이터베이스를 만듭니다. 발급된 Database ID를 기록합니다.</li>
+<p>Google 인증만 붙여서는 영상과 결과를 저장할 수 없습니다. 다음 단계는 운영자 또는 개발자가 한 번 설정합니다. 로그인용 D1과 테이블은 생성되었습니다. 비공개 R2 영상 저장소와 실제 영상 업로드는 아직 준비 전입니다.</p>
+<ol><li><strong>D1 · pano-game</strong> 생성과 0001–0003 테이블 초기화를 완료했습니다. 운영 DB 연결은 저장소의 <code>env.production.d1_databases</code>에서 관리합니다.</li>
 <li><strong>R2</strong>에서 <strong>pano-game-images</strong>라는 <strong>비공개</strong> 버킷을 만듭니다. 공개 URL은 켜지 않습니다. 계정의 활성화·요금 안내가 있으면 직접 확인하고 진행합니다.</li>
-<li>저장소의 <code>wrangler.jsonc</code>에 아래 항목을 추가합니다. <code>실제-D1-ID</code>를 발급받은 값으로 바꿉니다. 설정 파일을 사용하므로 대시보드에만 바인딩을 추가하고 끝내지 않습니다.</li></ol>
-<pre>"d1_databases": [{
-  "binding": "DB",
-  "database_name": "pano-game",
-  "database_id": "실제-D1-ID",
-  "migrations_dir": "migrations"
-}],
-"r2_buckets": [{
+<li>영상 저장소를 만든 뒤 <code>wrangler.jsonc</code>의 <code>env.production</code> 안에 아래 항목을 추가합니다. 기존 DB 연결은 유지하며 운영 DB·영상 저장소를 미리보기 환경에 연결하지 않습니다.</li></ol>
+<pre>"r2_buckets": [{
   "binding": "IMAGES",
   "bucket_name": "pano-game-images"
 }]</pre>
-<p><code>F:\pano\collab-web</code>에서 다음 명령으로 테이블을 만듭니다. Wrangler 로그인이 필요하며, 로그인 안내는 본인이 완료합니다.</p>
+<p><code>F:\pano\collab-web</code>에서 이후 테이블 변경은 다음 명령으로 적용합니다. 현재 0001–0003은 이미 적용되어 다시 생성하지 않습니다. Wrangler 로그인이 필요하며, 로그인 안내는 본인이 완료합니다.</p>
 <pre>. F:\pano\scripts\env.ps1
 Set-Location F:\pano\collab-web
 $env:LOCALAPPDATA='F:\pano\cache\node-local'
 $env:APPDATA='F:\pano\config\node'
 $env:WRANGLER_SEND_METRICS='false'
 node node_modules/wrangler/bin/wrangler.js login
-node node_modules/wrangler/bin/wrangler.js d1 migrations apply pano-game --remote</pre>
+node node_modules/wrangler/bin/wrangler.js d1 migrations apply pano-game --remote --env production</pre>
 <p>설정을 GitHub에 반영하고 재배포합니다. 비밀값은 GitHub에 넣지 않습니다. 미리보기 배포에 운영 DB와 비밀을 연결하지 말고 별도 테스트 환경을 사용하세요.</p>
 
 <h2>4. 출제 자료는 별도로 준비해야 합니다</h2>
@@ -73,7 +67,7 @@ node node_modules/wrangler/bin/wrangler.js d1 migrations apply pano-game --remot
 <li>닉네임·국가·대학을 저장합니다. 첫 라운드 후 국가·대학은 고정됩니다.</li>
 <li>검증용 문제은행으로 박스를 그리고 <strong>서버에 저장됨</strong>을 확인한 후 새로고침해 복구되는지 봅니다.</li>
 <li>10장 제출 후 검증 3장의 전체 병소 수·박스 일치·오탐으로 100점 채점되는지 확인합니다.</li>
-<li>개인·국가·대학 순위에 동일한 점수 집계가 반영되는지 확인합니다. 실제 Google 인증과 Cloudflare DB 통합 검증은 연결 후 수행해야 합니다.</li></ol>
+<li>개인·국가·대학 순위에 동일한 점수 집계가 반영되는지 확인합니다. Google 계정 선택 후 사이트에 돌아와 프로필 화면이 열리는지 확인하세요.</li></ol>
 <h2>오류가 나오면</h2>
 <ul><li><strong>콘솔 자체가 로드되지 않음:</strong> 시간이 지난 뒤 일반 브라우저에서 다시 확인하세요. 현재 원인은 확인되지 않았습니다.</li>
 <li><strong>redirect_uri_mismatch:</strong> 위 콜백 주소를 대소문자·경로·끝 슬래시까지 비교합니다.</li>
@@ -83,7 +77,7 @@ node node_modules/wrangler/bin/wrangler.js d1 migrations apply pano-game --remot
 <h2>무료·유료 피드백 운영</h2>
 <p>무료 세트는 검증용 3장과 미검토 7장입니다. 시작 팝업에는 일부 문항 기준 채점과 제한된 상세 피드백을 안내합니다. 유료 전체 피드백은 전환 이후 시작한 검증 10장 세트에만 적용할 예정이며 현재 결제는 연결 전입니다. 판독 기준은 재현율·박스 겹침·오탐입니다. 학습 후보 통과 기준은 50점으로 설정했으며 후보를 자동 확정하지 않습니다.</p>
 <h2>Hanoi 문제은행 연결</h2><p>검증 28장과 미검토 2,942장의 비공개 목록을 F:\pano\league\hanoi-bank에 준비했습니다. 친구 배정 100장과 평가 자료를 제외했습니다. 원본 약 8.33 GB는 기존 경로를 참조하며 실제 업로드 전입니다.</p>
-<pre>node node_modules/wrangler/bin/wrangler.js d1 migrations apply pano-game --remote
+<pre>node node_modules/wrangler/bin/wrangler.js d1 migrations apply pano-game --remote --env production
 node scripts/bank.mjs publish F:\pano\league\hanoi-bank\manifest.json pano-game pano-game-images
 node scripts/bank.mjs export-candidates pano-game F:\pano\league\returns\candidates.json</pre>
 <p>위 명령은 Cloudflare 로그인·비공개 버킷·DB 연결 후 실행합니다. 0001–0003 마이그레이션을 모두 적용하세요. 업로드 중 중단해도 완료한 영상 기록에서 재개합니다. 답변 내보내기는 검증 점수가 해당 세트의 기준(기본 50점) 이상인 학습 후보만 포함합니다.</p>

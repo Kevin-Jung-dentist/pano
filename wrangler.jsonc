@@ -6,5 +6,30 @@
     "APP_ORIGIN": "https://pano-9kh.pages.dev",
     "SCORED_PER_ROUND": "3",
     "TRAINING_MIN_SCORE": "50"
+  },
+  "env": {
+    "production": {
+      "vars": {
+        "APP_ORIGIN": "https://pano-9kh.pages.dev",
+        "SCORED_PER_ROUND": "3",
+        "TRAINING_MIN_SCORE": "50"
+      },
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "pano-game",
+          "database_id": "0146b254-6425-4604-ad93-aaf7022bbf52",
+          "migrations_dir": "migrations"
+        }
+      ]
+    },
+    "preview": {
+      "vars": {
+        "APP_ORIGIN": "https://pano-9kh.pages.dev",
+        "SCORED_PER_ROUND": "3",
+        "TRAINING_MIN_SCORE": "50"
+      },
+      "d1_databases": []
+    }
   }
 }

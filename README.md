@@ -63,10 +63,14 @@ node scripts/bank.mjs export-candidates pano-game F:\pano\league\returns\candida
 
 ### 운영 연결 상태
 
-**현재 배포판은 조작 연습과 화면 미리보기입니다.** Google OAuth, 실제 D1/R2 및 문제은행 업로드를 연결해야
-실제 회원의 판독을 받을 수 있습니다. [운영자 설정 안내](https://pano-9kh.pages.dev/play/setup)를 참고하세요.
-2026-10-17 확인 시 Cloudflare CLI도 인증되지 않은 상태여서 실제 자료는 업로드하지 않았습니다.
-새 DB에는 `migrations/`의 0001–0003을 순서대로 적용해야 합니다.
+Google OAuth 인증 정보는 Cloudflare Production의 암호화된 Secret으로 관리합니다.
+로그인용 D1 `pano-game`에는 0001–0003 마이그레이션을 적용했습니다.
+`wrangler.jsonc`의 `env.production`에만 운영 DB를 연결하며 미리보기에는 연결하지 않습니다.
+Google 앱은 현재 테스트 상태이므로 Google 콘솔의 테스트 사용자 설정을 확인하세요.
+R2 및 문제은행 업로드는 아직 연결 전입니다. 로그인 연결과 실제 영상 출제 준비는 별개입니다.
+[운영자 설정 안내](https://pano-9kh.pages.dev/play/setup)를 참고하세요.
+Cloudflare CLI는 미인증 상태입니다. 후속 마이그레이션은 인증 후
+`node node_modules/wrangler/bin/wrangler.js d1 migrations apply pano-game --remote --env production`으로 적용합니다.
 
 기존 ZIP 편집기와 달리 게임 답변은 서버에 저장됩니다. Cloudflare Pages Functions + D1 + R2 기반이며
 문제은행·환자 영상·정답·사용자 정보·비밀키는 공개 저장소에 포함하지 않습니다.
