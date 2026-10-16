@@ -1,10 +1,10 @@
 # Demo leaderboard and administrator access
 
-The public leaderboard returns real results in `entries` and fictional display records in `demo_entries`. Every demo name is followed by `(demo)` in the interface. The demo section is separate, with its own positions. Country and institution demo averages are weighted by their fictional completed-set counts.
+The public leaderboard API keeps real results in `entries` and fictional display records in `demo_entries` for provenance. The public interface combines these into one list without demo badges or a separate demo section; positions follow the displayed score order. Country and institution display averages are weighted by completed-set counts, merging matching groups without duplicate country rows. This is presentation-only aggregation: real scores, account statistics and training records do not change. The `/admin/` page retains the explicit `(demo)` badges and demo-only management controls.
 
 Migration `0007_demo_leaderboard.sql` seeds 24 fictional readers in 12 countries. Their study circles are fictional. These rows live only in `game_demo_leaders`: they are never users, submissions, paid credits, verified references or training candidates.
 
-Sign in to the main site, then open `/admin/`. An authorized account can rename a demo reader, delete one demo record, or delete all demos. The annotation in parentheses cannot be removed. Renames use revision checks, preserve other unsaved names, and survive reloads. Deleted rows are not reseeded by deployment; the migration runs once. Deletion does not affect real rankings, users or annotations. A database backup can restore accidentally removed demo rows.
+Sign in to the main site, then open `/admin/`. An authorized account can rename a demo reader, delete one demo record, or delete all demos. The admin-only annotation in parentheses cannot be removed. Renames use revision checks, preserve other unsaved names, and survive reloads. Deleted rows are not reseeded by deployment; the migration runs once. Deletion removes the rows from the public display but does not modify real scores, users or annotations. A database backup can restore accidentally removed demo rows.
 
 ## Owner bootstrap
 

@@ -87,19 +87,17 @@ async function leaderboard(){
  const request=++rankRequest,selected=group;$("ranks").replaceChildren();
  try{const data=await api("leaderboard?group="+selected);if(request!==rankRequest)return;
  const countries=new Intl.DisplayNames([I.language],{type:"region"});
- function rows(entries,demo){entries.forEach((r,i)=>{
-  const row=document.createElement("tr");if(demo)row.className="demo-rank";
+ const entries=LoDRanking.entries(data,selected);
+ entries.forEach((r,i)=>{
+  const row=document.createElement("tr");
   const name=selected==="country"?countries.of(r.country):r.name;
   for(const [col,v] of [i+1,name,I.percent(r.average===null?null:r.average/100),I.number(r.rounds,0),I.number(r.members,0)].entries()){
    const cell=document.createElement("td");cell.textContent=v;
-   if(col===1){if(demo){const badge=document.createElement("span");badge.className="demo-tag";badge.textContent=" (demo)";cell.append(badge);}
-    if(selected!=="country"){const region=document.createElement("small");region.className="rank-region";region.textContent=countries.of(r.country);cell.append(region);}}
+   if(col===1&&selected!=="country"){const region=document.createElement("small");region.className="rank-region";region.textContent=countries.of(r.country);cell.append(region);}
    row.append(cell);
   }$("ranks").append(row);
- });}
- if(data.entries.length)rows(data.entries,false);
- if(data.demo_entries?.length){rankMessage("demoRankNotice");rows(data.demo_entries,true);}
- if(!data.entries.length&&!data.demo_entries?.length)rankMessage("emptyRank");
+ });
+ if(!entries.length)rankMessage("emptyRank");
  }catch{if(request===rankRequest)rankMessage("rankFailed");}
 }
 function rankMessage(key){const row=document.createElement("tr"),cell=document.createElement("td");cell.colSpan=5;cell.textContent=t(key);row.append(cell);$("ranks").append(row);}
