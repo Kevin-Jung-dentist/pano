@@ -19,10 +19,10 @@ test('public responses hide real and demo names, while own profile and administr
  const countries=await (await handle(h.req('leaderboard?group=country',undefined,'anonymous'),h.env)).json();assert.equal(countries.entries[0].name,'KR');
  const institutions=await (await handle(h.req('leaderboard?group=university',undefined,'anonymous'),h.env)).json();assert.equal(institutions.entries[0].name,'Test University');
 });
-test('a 200-row demo addition remains visible without merging repeated nicknames or changing real records',async()=>{
+test('distinct full names with the same masked nickname remain distinct without changing real records',async()=>{
  const h=await harness();
  const insert=h.DB.db.prepare('INSERT INTO game_demo_leaders(id,nickname,country,university,average,rounds) VALUES(?,?,?,?,?,?)');
- for(let i=0;i<200;i++)insert.run('demo-'+(1000+i),'SameDisplayName','US','Individual',70,3);
+ for(let i=0;i<200;i++)insert.run('demo-'+(1000+i),'Same'+i+'DisplayName','US','Individual',70,3);
  const data=await (await handle(h.req('leaderboard',undefined,'anonymous'),h.env)).json();
  assert.equal(data.demo_entries.length,224);assert.equal(data.demo_entries.filter(r=>r.name==='Sa***me').length,200);assert.deepEqual(data.entries,[]);
 });

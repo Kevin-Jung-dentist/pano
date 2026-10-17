@@ -3,13 +3,19 @@ import http from "node:http";
 import fs from "node:fs";
 import path from "node:path";
 import {fileURLToPath} from "node:url";
-import {harness} from "../tests/game-harness.mjs";
+import {harness,ref} from "../tests/game-harness.mjs";
 import {handle} from "../server/api.mjs";
 import {guardAdminPage,adminAssetResponse} from "../server/admin-page.mjs";
 import imageWorker from "../server/image-worker.mjs";
 import {compileBank} from "./bank.mjs";
 const h=await harness();
 if(process.env.PANO_QA_ADMIN==="alice")h.DB.db.prepare("INSERT INTO game_admins VALUES(?,?)").run("alice",Math.floor(Date.now()/1000));
+if(process.env.PANO_QA_RANKING==='1'){
+ for(const who of ['alice','bob']){
+  const round=await (await handle(h.req('rounds',{},who),h.env)).json();
+  for(const item of round.items)await handle(h.req(`rounds/${round.id}/cases/${item.id}/submit`,{boxes:who==='alice'?ref:[ref[0]],revision:0},who),h.env);
+ }
+}
 const root=fileURLToPath(new URL("../dist/",import.meta.url));
 h.env.IMAGES={get:async()=>({body:fs.readFileSync(new URL("../tests/fixtures/game-practice.png",import.meta.url))})};
 const port=Number(process.env.PANO_QA_PORT||8789);h.env.APP_ORIGIN="http://127.0.0.1:"+port;

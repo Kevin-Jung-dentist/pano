@@ -52,7 +52,9 @@ test('individual and bulk deletion remove only demo rows, remain deleted, and ca
  for(const group of ['individual','country','university'])assert.deepEqual((await (await handle(h.req('leaderboard?group='+group),h.env)).json()).demo_entries,[]);
  assert.equal((await (await handle(h.req('admin/demos/delete-all',{confirm:'DELETE_DEMOS'}),h.env)).json()).deleted,0);
  assert.deepEqual(state(h),before);
- assert.deepEqual((await (await handle(h.req('leaderboard'),h.env)).json()).entries,realBefore);
+ const realAfter=(await (await handle(h.req('leaderboard'),h.env)).json()).entries;
+ assert.equal(realAfter[0].rank,1);assert.equal(realBefore[0].rank,25);
+ assert.deepEqual(realAfter.map(({rank,...r})=>r),realBefore.map(({rank,...r})=>r));
 });
 const creation=()=>({request_id:crypto.randomUUID(),nickname:'NouvelleLune',country:'FR',university:'Paris Study Circle',average:87.5,rounds:4});
 test('administrator can create, retry without duplication, rename and delete a new demo record',async()=>{

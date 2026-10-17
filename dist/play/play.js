@@ -21,7 +21,7 @@ function renderAnswers(){
  editor.boxes.forEach((b,i)=>{const btn=document.createElement("button");btn.className="answer-row"+(editor.selected===b.id?" selected":"");btn.textContent=(i+1)+". "+t(b.category);const small=document.createElement("small");small.textContent=b.bbox.map(x=>I.number(x)).join(", ");btn.append(small);btn.onclick=()=>{editor.setMode("select");editor.select(b.id);};$("answer-list").append(btn);});
  $("remove-box").disabled=!editor.selected||submitting;
 }
-function accountLabels(){$("account").hidden=!me;$("account").textContent=me?.nickname||t("profile");$("login-top").hidden=!!me;$("start").textContent=t(me?"start":"startLogin");}
+function accountLabels(){$("account").hidden=!me;$("account").textContent=me?.nickname||t("profile");$("login-top").hidden=!!me;$("start").textContent=t(me?"start":"startLogin");if(!me)$("my-ranking").hidden=true;}
 async function refreshMe(){const data=await api("me");me=data.user;paymentAccount=data.payments||{credits:0,pending:null};accountLabels();payments.render();await loadHistory();}
 function fillProfile(){if(!me)return;panel("profile-panel");$("nickname").value=me.nickname||"";$("country").value=me.country||"";$("university").value=me.university||"";$("terms").checked=me.profile_complete;}
 async function loadHistory(){
@@ -83,10 +83,21 @@ async function showResults(scroll=true){
  await leaderboard();
 }
 let rankRequest=0;
+function personalRankCard(own){
+ const card=$("my-ranking");card.hidden=!me;if(!me)return;
+ $("my-rank-name").textContent=own?.nickname||me.nickname||t('profile');
+ $("my-rank-position").textContent=own?.rank?t('rankPosition',{n:I.number(own.rank,0)}):'—';
+ $("my-rank-points").textContent=own?I.number(own.points,2):'—';
+ $("my-rank-questions").textContent=own?I.number(own.questions,0):'—';
+ $("my-rank-average").textContent=I.percent(own?.average==null?null:own.average/100);
+ $("my-rank-note").textContent=t(!own?'rankMineFailed':own.state==='excluded'?'rankAdminExcluded':own.state==='unranked'?'rankNotYet':'rankMineNote');
+}
 async function leaderboard(){
  const request=++rankRequest,selected=group;$("ranks").replaceChildren();$("rank-more").hidden=true;
  const identity=selected==='individual'?'nickname':selected;$("rank-identity").dataset.i18n=identity;$("rank-identity").textContent=t(identity);
- try{const data=await api("leaderboard?group="+selected);if(request!==rankRequest)return;
+ const personal=me?api('me/ranking').catch(()=>null):Promise.resolve(null);
+ try{const [data,own]=await Promise.all([api("leaderboard?group="+selected),personal]);if(request!==rankRequest)return;
+ personalRankCard(own);
  const countries=new Intl.DisplayNames([I.language],{type:"region"});
  const entries=LoDRanking.entries(data,selected);
  let shown=0;
@@ -95,9 +106,12 @@ async function leaderboard(){
  entries.slice(shown,end).forEach((r,offset)=>{
   const i=shown+offset;
   const row=document.createElement("tr");
+  const mine=selected==='individual'&&own?.state==='ranked'&&r.rank===own.rank;
+  if(mine)row.className='rank-own';
   const name=selected==="country"?countries.of(r.country):r.name;
-  for(const [col,v] of [i+1,name,I.number(r.points,2),I.number(r.questions,0),I.percent(r.average===null?null:r.average/100)].entries()){
+  for(const [col,v] of [r.rank||i+1,name,I.number(r.points,2),I.number(r.questions,0),I.percent(r.average===null?null:r.average/100)].entries()){
    const cell=document.createElement("td");cell.textContent=v;
+   if(col===1&&mine){const badge=document.createElement('span');badge.className='rank-you';badge.textContent=t('rankYou');cell.append(badge);}
    if(col===1&&selected!=="country"){const region=document.createElement("small");region.className="rank-region";region.textContent=countries.of(r.country);cell.append(region);}
    row.append(cell);
   }$("ranks").append(row);
@@ -106,7 +120,7 @@ async function leaderboard(){
  }
  $("rank-more").onclick=appendPage;appendPage();
  if(!entries.length)rankMessage("emptyRank");
- }catch{if(request===rankRequest)rankMessage("rankFailed");}
+ }catch{const own=await personal;if(request===rankRequest){personalRankCard(own);rankMessage("rankFailed");}}
 }
 function rankMessage(key){const row=document.createElement("tr"),cell=document.createElement("td");cell.colSpan=5;cell.textContent=t(key);row.append(cell);$("ranks").append(row);}
 function showPracticeResults(){
@@ -128,9 +142,9 @@ $("practice").onclick=()=>startPractice().catch(e=>notice(I.error(e.message)));$
 $("confirm-start").onclick=launch;$("cancel-start").onclick=()=>$("before-start").close();
 const payments=LoDPayments({api,state:()=>({config,me,paymentAccount}),refresh:refreshMe,profile:fillProfile,launch});
 $("account").onclick=fillProfile;
-$("profile-form").onsubmit=async e=>{e.preventDefault();try{const p=G.profile({nickname:$("nickname").value,country:$("country").value,university:$("university").value});if(!$("terms").checked)throw Error(t("checkTerms"));me=(await api("profile",{...p,consent_version:config.terms_version})).user;await refreshMe();panel("landing");notice(t("profileSaved"));}catch(err){notice(I.error(err.message));}};
-$("logout").onclick=async()=>{await saving;try{await api("logout",{});me=null;await refreshMe();panel("landing");}catch(e){notice(e.message);}};
-$("delete-account").onclick=async()=>{if(!confirm(t("deleteConfirm")))return;await saving;try{await api("account/delete",{confirm:"DELETE"});me=null;await refreshMe();panel("landing");notice(t("deleted"));}catch(e){notice(e.message);}};
+$("profile-form").onsubmit=async e=>{e.preventDefault();try{const p=G.profile({nickname:$("nickname").value,country:$("country").value,university:$("university").value});if(!$("terms").checked)throw Error(t("checkTerms"));me=(await api("profile",{...p,consent_version:config.terms_version})).user;await refreshMe();panel("landing");await leaderboard();notice(t("profileSaved"));}catch(err){notice(I.error(err.message));}};
+$("logout").onclick=async()=>{await saving;try{await api("logout",{});me=null;accountLabels();await refreshMe();panel("landing");await leaderboard();}catch(e){notice(e.message);}};
+$("delete-account").onclick=async()=>{if(!confirm(t("deleteConfirm")))return;await saving;try{await api("account/delete",{confirm:"DELETE"});me=null;accountLabels();await refreshMe();panel("landing");await leaderboard();notice(t("deleted"));}catch(e){notice(e.message);}};
 $("finding").onchange=e=>{editor.category=e.target.value;editor.setMode("draw");};$("draw-tool").onclick=()=>editor.setMode("draw");$("select-tool").onclick=()=>editor.setMode("select");$("pan-tool").onclick=()=>editor.setMode("pan");$("undo").onclick=()=>editor.undo();$("redo").onclick=()=>editor.redo();$("remove-box").onclick=()=>editor.remove();$("hide-boxes").onclick=()=>editor.toggle();$("fit").onclick=()=>editor.fit();
 $("submit").onclick=()=>{if(!editor.boxes.length)$("confirm-submit").showModal();else submit();};$("skip").onclick=()=>{if(editor.boxes.length){notice(t("hasBoxes"));return;}$("confirm-submit").showModal();};
 $("cancel-empty").onclick=()=>$("confirm-submit").close();$("confirm-empty").onclick=()=>{$("confirm-submit").close();submit();};

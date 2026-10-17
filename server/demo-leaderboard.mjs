@@ -7,6 +7,11 @@ function nickname(value){
  if([...text].length<2||[...text].length>24||/[<>\p{Cc}\p{Cf}]/u.test(text))error(400,"닉네임 형식을 확인하세요.");
  return text;
 }
+const nameKey=value=>value.normalize('NFKC').trim().replace(/\s+/g,' ').toLocaleLowerCase('en');
+async function unusedNickname(db,value,id){
+ const {results}=await db.prepare('SELECT id,nickname FROM game_demo_leaders WHERE id<>?').bind(id).all();
+ if(results.some(r=>nameKey(r.nickname)===nameKey(value)))error(409,'이미 사용 중인 닉네임입니다.');
+}
 export async function isAdmin(db,uid){return !!(db&&uid&&await db.prepare("SELECT user_id FROM game_admins WHERE user_id=?").bind(uid).first());}
 export async function list(db,mode){
  const sql=mode==="individual"?
@@ -27,7 +32,8 @@ export async function manage(db,path,method,readBody){
   if(!Number.isFinite(b.average)||b.average<0||b.average>100)error(400,"demoScoreInvalid");
   if(!Number.isSafeInteger(b.rounds)||b.rounds<1||b.rounds>100000)error(400,"demoRoundsInvalid");
   const id="demo-"+b.request_id;
-  await db.prepare("INSERT INTO game_demo_leaders(id,nickname,country,university,average,rounds) VALUES(?,?,?,?,?,?) ON CONFLICT(id) DO NOTHING").bind(id,p.nickname,p.country,p.university,b.average,b.rounds).run();
+  await unusedNickname(db,p.nickname,id);
+  await db.prepare("INSERT INTO game_demo_leaders(id,nickname,country,university,average,rounds) SELECT ?,?,?,?,?,? WHERE NOT EXISTS(SELECT 1 FROM game_demo_leaders WHERE lower(nickname)=lower(?) AND id<>?) ON CONFLICT(id) DO NOTHING").bind(id,p.nickname,p.country,p.university,b.average,b.rounds,p.nickname,id).run();
   const entry=await db.prepare("SELECT * FROM game_demo_leaders WHERE id=?").bind(id).first();
   if(!entry||entry.nickname!==p.nickname||entry.country!==p.country||entry.university!==p.university||entry.average!==b.average||entry.rounds!==b.rounds)error(409,"demoCreateConflict");
   return {ok:true,entry};
@@ -41,7 +47,8 @@ export async function manage(db,path,method,readBody){
  const b=await readBody();if(!Number.isInteger(b.revision)||b.revision<0)error(400,"demoInvalidRevision");
  let result;
  if(match[2]==="rename"){
-  result=await db.prepare("UPDATE game_demo_leaders SET nickname=?,revision=revision+1 WHERE id=? AND revision=?").bind(nickname(b.nickname),match[1],b.revision).run();
+  const name=nickname(b.nickname);await unusedNickname(db,name,match[1]);
+  result=await db.prepare("UPDATE game_demo_leaders SET nickname=?,revision=revision+1 WHERE id=? AND revision=? AND NOT EXISTS(SELECT 1 FROM game_demo_leaders WHERE lower(nickname)=lower(?) AND id<>?)").bind(name,match[1],b.revision,name,match[1]).run();
  }else result=await db.prepare("DELETE FROM game_demo_leaders WHERE id=? AND revision=?").bind(match[1],b.revision).run();
  if(!result.meta.changes)error(409,"demoConflict");return {ok:true};
 }
