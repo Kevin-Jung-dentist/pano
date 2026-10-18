@@ -1,9 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {harness,ref} from './game-harness.mjs';
+import {harness,ref,beginReading} from './game-harness.mjs';
 import {handle} from '../server/api.mjs';
 import * as Auth from '../server/auth.mjs';
-async function call(h,path,body,who='alice'){const res=await handle(h.req(path,body,who),h.env);return {status:res.status,body:await res.json()};}
+async function call(h,path,body,who='alice'){await beginReading(h,path,who);const res=await handle(h.req(path,body,who),h.env);return {status:res.status,body:await res.json()};}
 async function reader(h,id){const now=Auth.now(),token=Auth.random();h.tokens[id]=token;await h.DB.prepare('INSERT INTO game_users(id,google_sub,nickname,nickname_key,country,university,university_key,consent_at,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?)').bind(id,id+'-google',id,id,'KR','Test','test',now,now,now).run();await h.DB.prepare('INSERT INTO game_sessions VALUES(?,?,?)').bind(await Auth.digest(token),id,now+3600).run();}
 async function pool(h,n){await h.DB.prepare("UPDATE game_cases SET active=0 WHERE kind='unscored' AND CAST(substr(id,5) AS INTEGER)>=?").bind(21+n).run();}
 async function complete(h,who,boxes){let r=(await call(h,'rounds',{},who)).body;for(const c of r.items)r=(await call(h,`rounds/${r.id}/cases/${c.id}/submit`,{boxes,revision:0},who)).body;return r;}
@@ -20,6 +20,7 @@ test('last fresh images are used before filling a set with failed images',async(
 });
 test('active assignments, even after all gold answered badly, cannot be recycled',async()=>{
  const h=await harness();await pool(h,7);const a=(await call(h,'rounds',{})).body;
+ const ordered=[...a.items.filter(c=>Number(c.id.slice(4))<21),...a.items.filter(c=>Number(c.id.slice(4))>=21)];h.DB.db.prepare('UPDATE game_round_cases SET position=position+100 WHERE round_id=?').run(a.id);ordered.forEach((c,i)=>h.DB.db.prepare('UPDATE game_round_cases SET position=? WHERE round_id=? AND case_id=?').run(i,a.id,c.id));
  for(const c of a.items.filter(c=>Number(c.id.slice(4))<21))await call(h,`rounds/${a.id}/cases/${c.id}/submit`,{boxes:[],revision:0});
  assert.equal((await call(h,'rounds',{},'bob')).status,409);assert.equal((await h.DB.prepare('SELECT COUNT(*) n FROM game_round_quality').first()).n,0);
 });

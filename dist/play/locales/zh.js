@@ -54,7 +54,10 @@ LoDLocales.zh={
     "demoCreateInvalid": "添加请求无效，请重新打开此页。",
     "demoScoreInvalid": "平均分须在0至100之间。",
     "demoRoundsInvalid": "完成组数须为1至100000的整数。",
-    "demoCreateConflict": "此请求已保存不同记录，请检查管理列表。"
+    "demoCreateConflict": "此请求已保存不同记录，请检查管理列表。",
+    "caseNotStarted": "请先打开图片。",
+    "caseOutOfOrder": "请先提交当前图片。",
+    "caseSyncRetry": "请同步答案后重试。"
   },
   "historyTitle": "你的阅片记录",
   "historyResult": "查看结果",
@@ -85,7 +88,7 @@ LoDLocales.zh={
   "overlap": "方框重叠 · IoU",
   "overlapDesc": "你的方框与参考框的重叠程度",
   "fp": "假阳性",
-  "fpDesc": "位置错误、类型错误或重复的框",
+  "fpDesc": "龋齿误检的扣分权重为漏检的¼。根尖病变误检保留完整扣分权重。",
   "precision": "精确率",
   "precisionDesc": "你的方框中匹配到病灶的比例",
   "howTitle": "发现、标记、回顾。",
@@ -292,5 +295,14 @@ LoDLocales.zh={
   "rankMineNote": "此卡片仅本人可见。完成整套题后，成绩才会计入。",
   "rankNotYet": "完成第一套题后，即可获得分数和排名。",
   "rankAdminExcluded": "管理员成绩仅本人可见，不参与公开排名。",
-  "rankMineFailed": "无法加载个人成绩，请重新打开排行榜。"
+  "rankMineFailed": "无法加载个人成绩，请重新打开排行榜。",
+  "readingTime": "剩余时间 {time}",
+  "timeSubmitted": "两分钟已到，已自动提交保存的答案。",
+  "timeSyncFailed": "时间已到。重新连接后将提交已保存的答案并进入下一张。",
+  "timerContinues": "离开此页面后，两分钟倒计时仍会继续。",
+  "focusInstruction": "仅标注龋齿和根尖病变。深龋与阻生牙为AI参考提示。每张图两分钟后自动提交已保存答案。",
+  "aiContextTitle": "AI参考提示 · 不计分",
+  "aiContextCount": "深龋／阻生牙预测 {n} 个 · AI预测并非核实后的标准答案。",
+  "hideAi": "隐藏AI提示",
+  "showAi": "显示AI提示"
 };

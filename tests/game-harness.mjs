@@ -1,6 +1,11 @@
 import {DatabaseSync} from "node:sqlite";
 import fs from "node:fs";
 import * as Auth from "../server/auth.mjs";
+// Exercise the same begin-before-edit sequence used by the real client.
+export async function beginReading(h,path,who='alice'){
+ const match=path.match(/^(rounds\/[^/]+\/cases\/[^/]+)\/(draft|submit)$/);if(!match)return;
+ const {handle}=await import('../server/api.mjs');await handle(h.req(match[1]+'/begin',{},who),h.env);
+}
 export class D1 {
  constructor(){this.db=new DatabaseSync(":memory:");for(const f of fs.readdirSync(new URL("../migrations/",import.meta.url)).filter(f=>f.endsWith(".sql")).sort())this.db.exec(fs.readFileSync(new URL("../migrations/"+f,import.meta.url),"utf8"));}
  prepare(sql){const db=this.db;let args=[];const api={bind(...v){args=v;return api;},async first(){return db.prepare(sql).get(...args)||null;},async all(){return {results:db.prepare(sql).all(...args)};},async run(){const r=db.prepare(sql).run(...args);return {success:true,meta:{changes:Number(r.changes)}};}};return api;}

@@ -2,10 +2,11 @@
 const G=window.PanoGame,I=window.LoDI18n,t=I.t,$=id=>document.getElementById(id);
 let paymentAccount={credits:0,pending:null};
 let config={scored:3,total:10},me=null,round=null,current=null,practice=false,group="individual",saving=Promise.resolve(),saveError=null,dirty=false,submitting=false,statusKey="loading";
+let readingTimer=null,deadlineClock=null,expiryRunning=false,pendingVisible=false;
 function notice(message){$("notice").textContent=message;$("notice").hidden=!message;}
 function status(key){statusKey=key;$("draft-status").textContent=t(key);}
-async function api(path,body){const response=await fetch("/api/"+path,{credentials:"same-origin",headers:body?{"Content-Type":"application/json"}:{},method:body?"POST":"GET",body:body?JSON.stringify(body):undefined});let data;try{data=await response.json();}catch{throw Error(t("badResponse"));}if(!response.ok)throw Error(I.error(data.error||t("requestFailed")));return data;}
-function panel(id){for(const p of ["landing","profile-panel","game-panel","results-panel"])$(p).hidden=p!==id;$("ranking-panel").hidden=id==="game-panel"||id==="profile-panel";window.scrollTo(0,0);}
+async function api(path,body){const response=await fetch("/api/"+path,{signal:AbortSignal.timeout(20000),credentials:"same-origin",headers:body?{"Content-Type":"application/json"}:{},method:body?"POST":"GET",body:body?JSON.stringify(body):undefined});let data;try{data=await response.json();}catch{throw Error(t("badResponse"));}if(!response.ok)throw Error(I.error(data.error||t("requestFailed")));return data;}
+function panel(id){if(id!=="game-panel"){stopReadingTimer();pendingVisible=false;}for(const p of ["landing","profile-panel","game-panel","results-panel"])$(p).hidden=p!==id;$("ranking-panel").hidden=id==="game-panel"||id==="profile-panel";window.scrollTo(0,0);}
 const practiceDraftKey="lod-practice:banner-before-v1";
 function keyFor(c){return "pano-game:"+me?.id+":"+round?.id+":"+c.id;}
 function cache(c,boxes,pending){if(practice)return;try{localStorage.setItem(keyFor(c),JSON.stringify({boxes,revision:c.revision,pending}));}catch{notice(t("cacheFull"));}}
@@ -41,24 +42,35 @@ async function launch(){
  if(!me.profile_complete){fillProfile();return;}
  try{$("start").disabled=true;practice=false;round=await api("rounds",{});await refreshMe();await showNext();}catch(e){notice(e.message);}finally{$("start").disabled=false;}
 }
-function gameLabels(){if(!current)return;$("case-title").textContent=t("caseTitle",{n:current.position+1,total:round.total_target});$("round-label").textContent=t(practice?"practiceLabel":"roundLabel");$("draft-status").textContent=t(statusKey);$("hide-boxes").textContent=t(editor.hidden?"show":"hide");if(practice)$("attribution").textContent=t("practiceAttribution");}
+function gameLabels(){if(!current)return;$("case-title").textContent=t("caseTitle",{n:current.position+1,total:round.total_target});$("round-label").textContent=t(practice?"practiceLabel":"roundLabel");$("draft-status").textContent=t(statusKey);$("hide-boxes").textContent=t(editor.hidden?"show":"hide");$("focus-instruction").hidden=round.rule_version!==G.version&&!practice;$("ai-context").hidden=!current.ai_context;$("ai-context-count").textContent=t('aiContextCount',{n:current.ai_context?.boxes?.length||0});$("toggle-ai").textContent=t(editor.aiHidden?'showAi':'hideAi');if(practice)$("attribution").textContent=t("practiceAttribution");}
+function stopReadingTimer(){clearInterval(readingTimer);readingTimer=null;deadlineClock=null;$("reading-time").hidden=true;}
+function startReadingTimer(){
+ stopReadingTimer();if(practice||!current.deadline_at)return;
+ const iid=current.id,rid=round.id;deadlineClock=performance.now()+Math.max(0,current.deadline_at-round.server_now)*1000;$("reading-time").hidden=false;
+ const tick=()=>{const seconds=Math.max(0,Math.ceil((deadlineClock-performance.now())/1000));$("reading-time").textContent=t('readingTime',{time:Math.floor(seconds/60)+':'+String(seconds%60).padStart(2,'0')});$("reading-time").classList.toggle('time-low',seconds<=20);
+ if(seconds===0&&!expiryRunning&&!submitting&&current?.id===iid&&round?.id===rid){expiryRunning=true;submit(true).finally(()=>{expiryRunning=false;});}};
+ readingTimer=setInterval(tick,500);tick();
+}
 async function showNext(){
+ stopReadingTimer();
  if(round.state==="complete"){await showResults();return;}
+ if(document.hidden&&!practice){pendingVisible=true;editor.ready=false;return;}pendingVisible=false;
  current=round.items.find(x=>!x.submitted);if(!current)throw Error(t("noCurrent"));
  panel("game-panel");gameLabels();$("attribution").textContent=practice?t("practiceAttribution"):current.attribution+" · "+current.license;status("imageLoading");$("submit").disabled=true;$("skip").disabled=true;
- for(const opt of $("finding").options)opt.hidden=!current.scope.includes(opt.value);$("finding").value=current.scope[0];editor.category=current.scope[0];
+ if(!practice&&round.case_seconds){const id=current.id;round=await api('rounds/'+round.id+'/cases/'+id+'/begin',{});current=round.items.find(x=>x.id===id);if(current.submitted){await showNext();return;}startReadingTimer();}
+ $("finding").replaceChildren(...current.scope.map(category=>{const option=document.createElement('option');option.value=category;option.dataset.i18n=category;option.textContent=t(category);return option;}));$("finding").value=current.scope[0];editor.category=current.scope[0];
  let restored=false;
  if(!practice){try{const saved=JSON.parse(localStorage.getItem(keyFor(current))||"null");if(saved?.pending){if(saved.revision===current.revision){current.boxes=G.boxes(saved.boxes,current);restored=true;}else notice(t("conflict"));}}catch{notice(t("cacheInvalid"));}}
- try{await editor.load(current,current.boxes);editor.setMode("draw");gameLabels();renderAnswers();status(practice?"practiceStatus":"loaded");$("submit").disabled=false;$("skip").disabled=false;if(restored)changed(current.boxes);}catch(e){notice(I.error(e.message));status("imageFailed");}
+ try{const id=current.id;await editor.load(current,current.boxes);if(current.id!==id)return;editor.setMode("draw");gameLabels();renderAnswers();status(practice?"practiceStatus":"loaded");$("submit").disabled=deadlineClock!==null&&deadlineClock<=performance.now();$("skip").disabled=$("submit").disabled;if(restored&&!$("submit").disabled)changed(current.boxes);}catch(e){notice(I.error(e.message));status("imageFailed");}
 }
-async function submit(){
- if(submitting||!editor.ready)return;submitting=true;editor.cancel();editor.locked=true;$("submit").disabled=true;$("skip").disabled=true;notice("");
+async function submit(expired=false){
+ if(submitting||(!editor.ready&&!expired))return;submitting=true;if($("confirm-submit").open)$("confirm-submit").close();editor.cancel();editor.locked=true;$("submit").disabled=true;$("skip").disabled=true;notice("");
  try{
- await saving;if(saveError){changed(editor.boxes);await saving;if(saveError)throw saveError;}
+ await saving;if(saveError&&!expired){changed(editor.boxes);await saving;if(saveError)throw saveError;}
  if(practice){round.items[0].boxes=structuredClone(editor.boxes);round.items[0].submitted=true;round.state="complete";round.result={practice:true,score:null};try{localStorage.removeItem(practiceDraftKey);}catch{}}
- else{const old=current;round=await api("rounds/"+round.id+"/cases/"+current.id+"/submit",{boxes:editor.boxes,revision:current.revision,coordinate_system:G.coordinateSystem});try{localStorage.removeItem("pano-game:"+me.id+":"+round.id+":"+old.id);}catch{}dirty=false;}
+ else{const old=current;round=await api("rounds/"+round.id+"/cases/"+current.id+"/submit",{boxes:editor.boxes,revision:current.revision,coordinate_system:G.coordinateSystem});try{localStorage.removeItem("pano-game:"+me.id+":"+round.id+":"+old.id);}catch{}dirty=false;saveError=null;if(round.items.find(x=>x.id===old.id)?.auto_submitted)notice(t('timeSubmitted'));}
  await showNext();
- }catch(e){notice(I.error(e.message));}finally{submitting=false;editor.locked=false;$("submit").disabled=!editor.ready;$("skip").disabled=!editor.ready;}
+ }catch(e){notice(expired?t('timeSyncFailed'):I.error(e.message));if(expired)await new Promise(resolve=>setTimeout(resolve,5000));}finally{submitting=false;editor.locked=deadlineClock!==null&&deadlineClock<=performance.now();$("submit").disabled=!editor.ready||editor.locked;$("skip").disabled=!editor.ready||editor.locked;}
 }
 function renderReference(item,detail,host){
  const alt=t(detail.practice?"practiceOwnAlt":"compareAlt");const img=new Image();img.alt=alt;img.onload=()=>{
@@ -133,8 +145,9 @@ function showPracticeResults(){
  $("result-list").replaceChildren(grid);
 }
 async function startPractice(){
+ stopReadingTimer();
  await saving;if(dirty){notice(t("unsaved"));return;}practice=true;dirty=false;saveError=null;saving=Promise.resolve();
- const im={id:"practice-banner-before",position:0,width:1462,height:765,scope:G.categories,image_url:"/play/assets/banner-before.png",attribution:t("practiceAttribution"),license:"",boxes:[],revision:0,submitted:false};
+ const im={id:"practice-banner-before",position:0,width:1462,height:765,scope:G.labelCategories,image_url:"/play/assets/banner-before.png",attribution:t("practiceAttribution"),license:"",boxes:[],revision:0,submitted:false};
  let restored=false;try{const saved=JSON.parse(localStorage.getItem(practiceDraftKey)||"null");if(saved&&saved.width===im.width&&saved.height===im.height&&Object.entries(G.coordinateSystem).every(([k,v])=>saved.coordinate_system?.[k]===v)){im.boxes=G.boxes(saved.boxes,im);restored=im.boxes.length>0;}}catch{notice(t("cacheInvalid"));}
  round={id:"practice",state:"active",items:[im],total_target:1,scored_target:0,feedback_mode:"practice"};await showNext();notice(t(restored?"practiceRestored":"practiceNotice"));
 }
@@ -146,9 +159,11 @@ $("profile-form").onsubmit=async e=>{e.preventDefault();try{const p=G.profile({n
 $("logout").onclick=async()=>{await saving;try{await api("logout",{});me=null;accountLabels();await refreshMe();panel("landing");await leaderboard();}catch(e){notice(e.message);}};
 $("delete-account").onclick=async()=>{if(!confirm(t("deleteConfirm")))return;await saving;try{await api("account/delete",{confirm:"DELETE"});me=null;accountLabels();await refreshMe();panel("landing");await leaderboard();notice(t("deleted"));}catch(e){notice(e.message);}};
 $("finding").onchange=e=>{editor.category=e.target.value;editor.setMode("draw");};$("draw-tool").onclick=()=>editor.setMode("draw");$("select-tool").onclick=()=>editor.setMode("select");$("pan-tool").onclick=()=>editor.setMode("pan");$("undo").onclick=()=>editor.undo();$("redo").onclick=()=>editor.redo();$("remove-box").onclick=()=>editor.remove();$("hide-boxes").onclick=()=>editor.toggle();$("fit").onclick=()=>editor.fit();
+$("toggle-ai").onclick=()=>{editor.aiHidden=!editor.aiHidden;editor.paint();gameLabels();};
 $("submit").onclick=()=>{if(!editor.boxes.length)$("confirm-submit").showModal();else submit();};$("skip").onclick=()=>{if(editor.boxes.length){notice(t("hasBoxes"));return;}$("confirm-submit").showModal();};
 $("cancel-empty").onclick=()=>$("confirm-submit").close();$("confirm-empty").onclick=()=>{$("confirm-submit").close();submit();};
-$("exit-game").onclick=async()=>{await saving;if(dirty){notice(t("unsaved"));return;}panel("landing");await loadHistory();notice("");};
+$("exit-game").onclick=async()=>{await saving;if(dirty){notice(t("unsaved"));return;}stopReadingTimer();panel("landing");await loadHistory();notice(round?.case_seconds?t('timerContinues'):'');};
+document.addEventListener('visibilitychange',()=>{if(!document.hidden&&pendingVisible){pendingVisible=false;showNext().catch(e=>notice(I.error(e.message)));}});
 function rankNav(){panel("landing");$("ranking-panel").scrollIntoView({behavior:"smooth"});leaderboard();}
 $("nav-rank").onclick=rankNav;$("result-rank").onclick=rankNav;
 document.querySelectorAll("[data-group]").forEach(b=>b.onclick=()=>{group=b.dataset.group;document.querySelectorAll("[data-group]").forEach(x=>x.classList.toggle("active",x===b));leaderboard();});

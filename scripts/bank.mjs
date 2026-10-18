@@ -26,7 +26,7 @@ export function compileBank(manifest){
  if(counts.verified<3||counts.unscored<7)throw Error("Need at least three verified and seven unreviewed cases");
  return {sql:statements.join("\n")+"\n",counts};
 }
-function command(args){const wrangler=fileURLToPath(new URL("../node_modules/wrangler/bin/wrangler.js",import.meta.url));const r=spawnSync(process.execPath,[wrangler,...args],{encoding:"utf8",maxBuffer:128*1024*1024,env:{...process.env,WRANGLER_SEND_METRICS:"false",LOCALAPPDATA:path.join(root,"cache/node-local"),APPDATA:path.join(root,"config/node"),TEMP:path.join(root,"tmp"),TMP:path.join(root,"tmp")}});if(r.status!==0)throw Error("Cloudflare command failed. Check login/bindings. "+r.stderr.slice(-1000));return r.stdout;}
+function command(args){const wrangler=fileURLToPath(new URL("../node_modules/wrangler/bin/wrangler.js",import.meta.url));const r=spawnSync(process.execPath,[wrangler,...args],{encoding:"utf8",maxBuffer:128*1024*1024,env:{...process.env,WRANGLER_SEND_METRICS:"false",XDG_CONFIG_HOME:path.join(root,"config"),XDG_CACHE_HOME:path.join(root,"cache"),TEMP:path.join(root,"tmp"),TMP:path.join(root,"tmp")}});if(r.status!==0)throw Error("Cloudflare command failed. Check login/bindings. "+r.stderr.slice(-1000));return r.stdout;}
 function main(){
  const [action,input,...args]=process.argv.slice(2);
  if(action==="prepare"||action==="publish"){
@@ -47,7 +47,7 @@ function main(){
  const where=cursor?`WHERE (submitted_at,round_id,case_id)>(${Number(cursor.submitted_at)},${sqlString(cursor.round_id)},${sqlString(cursor.case_id)})`:"";
  const result=JSON.parse(command(["d1","execute",db,"--env","production","--remote","--command",`SELECT * FROM game_training_candidates ${where} ORDER BY submitted_at,round_id,case_id LIMIT 500`,"--json"]));
  const page=result.flatMap(x=>x.results||[]);
- for(const r of page){const boxes=Game.boxes(JSON.parse(r.boxes_json),{width:r.width,height:r.height,scope:JSON.parse(r.scope_json)});if(r.validation_score<r.quality_threshold)throw Error("Quality gate failed");rows.push({...r,boxes,boxes_json:undefined,coordinate_system:Game.coordinateSystem,review_state:"candidate_needs_review",training_ready:false});}
+ for(const r of page){const boxes=Game.boxes(JSON.parse(r.boxes_json),{width:r.width,height:r.height,scope:JSON.parse(r.scope_json)});if(r.validation_score<r.quality_threshold)throw Error("Quality gate failed");rows.push({...r,boxes,boxes_json:undefined,ai_context:r.ai_context_json?JSON.parse(r.ai_context_json):null,ai_context_json:undefined,unmarked_regions:r.auto_submitted?'unknown':'reviewed_within_scope',coordinate_system:Game.coordinateSystem,review_state:"candidate_needs_review",training_ready:false});}
  if(page.length<500)break;cursor=page.at(-1);
  }
 

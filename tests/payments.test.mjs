@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {harness,ref} from './game-harness.mjs';
+import {harness,ref,beginReading} from './game-harness.mjs';
 import {handle} from '../server/api.mjs';
 import {purchaseTerms} from '../server/payments.mjs';
 
@@ -28,7 +28,7 @@ async function setup(t){
   }if(loseCapture){loseCapture=false;throw Error('Network failed after capture');}}
   return response(order);
  });
- const call=async(path,b,who='alice',origin)=>{const res=await handle(h.req(path,b,who,origin),h.env);return {status:res.status,data:await res.json()};};
+ const call=async(path,b,who='alice',origin)=>{await beginReading(h,path,who);const res=await handle(h.req(path,b,who,origin),h.env);return {status:res.status,data:await res.json()};};
  const create=async()=>{const result=await call('payments/paypal/orders',{terms_version:purchaseTerms,amount:'0.01',currency:'AAA',user_id:'bob',feedback_plan:'full'});assert.equal(result.status,200,JSON.stringify(result.data));return result.data;};
  const approve=p=>{const row=h.DB.db.prepare('SELECT * FROM game_payments WHERE id=?').get(p.id);orders.get(row.paypal_order_id).status='APPROVED';return row;};
  const webhook=async(type,row,{signature='valid',id='WH-EVENT-'+crypto.randomUUID(),resource}={})=>{

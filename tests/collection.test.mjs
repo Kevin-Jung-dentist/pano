@@ -23,3 +23,12 @@ test('collection rejects failed quality, evaluation leakage and wrong coordinate
 test('empty export is explicit and does not treat old archived files as current training candidates',()=>{
  const h=fixture();collectCandidates(h.bundle,h.manifest,h.out);h.bundle.candidates=[];const r=collectCandidates(h.bundle,h.manifest,h.out);assert.equal(r.collected,0);assert.equal(JSON.parse(fs.readFileSync(r.index)).auto_training,false);assert.equal(fs.readdirSync(path.join(h.out,'candidates')).length,1);assert.ok(fs.readFileSync(r.report,'utf8').includes('아직 기준을 통과한 완료 답안이 없습니다'));
 });
+
+test('passing timeout answers preserve human boxes and unknown unmarked regions without approving training',()=>{
+ const h=fixture(),c=h.bundle.candidates[0];
+ Object.assign(c,{rule_version:G.version,scope_json:JSON.stringify(G.labelCategories),auto_submitted:1,ai_context:{origin:'ai_prediction',boxes:[{id:'ai',category:'deep_caries',bbox:[100,100,120,120]}]}});
+ const result=collectCandidates(h.bundle,h.manifest,h.out),index=JSON.parse(fs.readFileSync(result.index)),record=JSON.parse(fs.readFileSync(path.join(h.out,index.candidates[0].file)));
+ assert.equal(record.auto_submitted,true);assert.equal(record.coverage,'partial');assert.equal(record.unmarked_regions,'unknown');assert.equal(record.training_ready,false);assert.equal(index.auto_training,false);
+ assert.deepEqual(record.boxes,c.boxes);assert.deepEqual(record.ai_context,c.ai_context);assert.equal(record.boxes.length,1);
+ assert.ok(fs.readFileSync(result.report,'utf8').includes('시간 초과 · 미표시 영역 미검토'));
+});

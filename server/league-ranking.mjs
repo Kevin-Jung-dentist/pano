@@ -5,10 +5,12 @@ export const roundScores=`WITH round_scores AS (
  SELECT r.id,r.user_id,r.country,r.university,r.university_key,r.total_target AS questions,
  SUM(json_extract(rc.grade_json,'$.tp')) tp,SUM(json_extract(rc.grade_json,'$.fp')) fp,
  SUM(json_extract(rc.grade_json,'$.reference_count')) reference_count,
- 100.0*SUM(json_extract(rc.grade_json,'$.iou_sum'))/
- (SUM(json_extract(rc.grade_json,'$.reference_count'))+SUM(json_extract(rc.grade_json,'$.fp'))) score
+ CASE WHEN r.rule_version='lod-score-3' THEN
+ MAX(0,MIN(100,100.0*(SUM(json_extract(rc.grade_json,'$.iou_sum'))-SUM(json_extract(rc.grade_json,'$.fp_penalty')))/SUM(json_extract(rc.grade_json,'$.reference_count'))))
+ ELSE 100.0*SUM(json_extract(rc.grade_json,'$.iou_sum'))/
+ (SUM(json_extract(rc.grade_json,'$.reference_count'))+SUM(json_extract(rc.grade_json,'$.fp'))) END score
  FROM game_rounds r JOIN game_round_cases rc ON rc.round_id=r.id
- WHERE r.state='complete' AND r.rule_version=? AND rc.kind='verified'
+ WHERE r.state='complete' AND r.rule_version IN ('lod-score-2',?) AND rc.kind='verified'
  GROUP BY r.id HAVING SUM(json_extract(rc.grade_json,'$.reference_count'))>0)`;
 
 // Rank before the public limit and before masking names. The private card and

@@ -1,13 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import {harness,ref} from './game-harness.mjs';
+import {harness,ref,beginReading} from './game-harness.mjs';
 import {handle} from '../server/api.mjs';
 import Ranking from '../dist/play/ranking.js';
 const get=async(h,path,who='alice')=>await (await handle(h.req(path,undefined,who),h.env)).json();
 async function complete(h,who,boxes=ref){
  const round=await (await handle(h.req('rounds',{},who),h.env)).json();
- for(const c of round.items)assert.equal((await handle(h.req(`rounds/${round.id}/cases/${c.id}/submit`,{boxes,revision:0},who),h.env)).status,200);
+ for(const c of round.items){await beginReading(h,`rounds/${round.id}/cases/${c.id}/submit`,who);assert.equal((await handle(h.req(`rounds/${round.id}/cases/${c.id}/submit`,{boxes,revision:0},who),h.env)).status,200);}
 }
 
 test('private standing uses authenticated identity and has no rank until a set completes',async()=>{

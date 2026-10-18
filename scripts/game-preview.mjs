@@ -13,7 +13,7 @@ if(process.env.PANO_QA_ADMIN==="alice")h.DB.db.prepare("INSERT INTO game_admins 
 if(process.env.PANO_QA_RANKING==='1'){
  for(const who of ['alice','bob']){
   const round=await (await handle(h.req('rounds',{},who),h.env)).json();
-  for(const item of round.items)await handle(h.req(`rounds/${round.id}/cases/${item.id}/submit`,{boxes:who==='alice'?ref:[ref[0]],revision:0},who),h.env);
+  for(const item of round.items){await handle(h.req(`rounds/${round.id}/cases/${item.id}/begin`,{},who),h.env);await handle(h.req(`rounds/${round.id}/cases/${item.id}/submit`,{boxes:who==='alice'?ref:[ref[0]],revision:0},who),h.env);}
  }
 }
 const root=fileURLToPath(new URL("../dist/",import.meta.url));
@@ -23,6 +23,10 @@ if(process.env.PANO_QA_BANK){
  const filename=path.resolve(process.env.PANO_QA_BANK);if(!filename.toLowerCase().startsWith("f:\\pano\\"))throw Error("QA bank must remain under F:/pano");
  const manifest=JSON.parse(fs.readFileSync(filename,"utf8"));
  h.DB.db.exec("DELETE FROM game_cases;");h.DB.db.exec(compileBank(manifest).sql);
+ if(process.env.PANO_QA_AI){
+  const folder=path.resolve(process.env.PANO_QA_AI);if(!folder.toLowerCase().startsWith("f:\\pano\\"))throw Error("QA predictions must remain under F:/pano");
+  h.DB.db.exec(fs.readFileSync(path.join(folder,'context.sql'),'utf8'));
+ }
  const images=new Map(manifest.cases.map(c=>["/"+c.object_key,c.local_image]));
  h.env.ASSETS={fetch:async req=>{const file=images.get(new URL(req.url).pathname);return file?new Response(fs.readFileSync(file),{headers:{"Content-Type":"image/png"}}):new Response(null,{status:404});}};
  h.env.IMAGE_SERVICE={fetch:req=>imageWorker.fetch(req,h.env)};

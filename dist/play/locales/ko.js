@@ -29,7 +29,7 @@ LoDLocales.ko={
   "overlap": "박스 일치도 · IoU",
   "overlapDesc": "정답 박스와 내가 그린 박스가 겹치는 정도",
   "fp": "오탐",
-  "fpDesc": "잘못된 위치·종류 또는 중복으로 그린 박스 수",
+  "fpDesc": "충치 오탐은 놓친 병소의 ¼ 가중치로 감점합니다. 치근단 병소의 오탐은 기존 가중치를 유지합니다.",
   "precision": "정밀도",
   "precisionDesc": "내가 그린 박스 중 맞힌 비율",
   "howTitle": "찾고, 표시하고, 확인하세요.",
@@ -207,7 +207,10 @@ LoDLocales.ko={
     "demoCreateInvalid": "추가 요청 정보가 올바르지 않습니다. 페이지를 다시 열어 주세요.",
     "demoScoreInvalid": "평균 점수는 0부터 100까지 입력하세요.",
     "demoRoundsInvalid": "완료 세트 수는 1부터 100000까지 정수로 입력하세요.",
-    "demoCreateConflict": "이 요청으로 이미 다른 기록이 저장되었습니다. 관리자 목록에서 확인하세요."
+    "demoCreateConflict": "이 요청으로 이미 다른 기록이 저장되었습니다. 관리자 목록에서 확인하세요.",
+    "caseNotStarted": "영상을 먼저 열어 주세요.",
+    "caseOutOfOrder": "현재 영상을 먼저 제출해 주세요.",
+    "caseSyncRetry": "답안을 동기화하고 다시 시도해 주세요."
   },
   "demoNav": "판독 예시",
   "seeExample": "판독 화면 살펴보기",
@@ -292,5 +295,14 @@ LoDLocales.ko={
   "rankMineNote": "내 기록은 나에게만 표시됩니다. 완료한 세트의 결과가 반영됩니다.",
   "rankNotYet": "첫 세트를 완료하면 점수와 순위가 반영됩니다.",
   "rankAdminExcluded": "관리자 계정의 점수는 본인에게만 표시되며 공개 순위에서 제외됩니다.",
-  "rankMineFailed": "내 기록을 불러오지 못했습니다. 리더보드를 다시 열어 주세요."
+  "rankMineFailed": "내 기록을 불러오지 못했습니다. 리더보드를 다시 열어 주세요.",
+  "readingTime": "남은 시간 {time}",
+  "timeSubmitted": "2분이 지나 저장된 답안을 자동 제출했습니다.",
+  "timeSyncFailed": "시간이 끝났습니다. 연결되면 저장된 답안을 제출하고 다음 영상으로 이동합니다.",
+  "timerContinues": "현재 영상의 2분 제한은 화면을 나가도 계속됩니다.",
+  "focusInstruction": "충치와 치근단 병소만 표시하세요. 깊은 충치·매복치는 AI 참고 표시입니다. 영상당 2분 후 저장된 답안이 자동 제출됩니다.",
+  "aiContextTitle": "AI 참고 표시 · 채점 제외",
+  "aiContextCount": "깊은 충치·매복치 {n}개 · AI 예측이며 확정 정답이 아닙니다.",
+  "hideAi": "AI 표시 숨기기",
+  "showAi": "AI 표시 보기"
 };

@@ -54,7 +54,10 @@ LoDLocales.it={
     "demoCreateInvalid": "Richiesta non valida. Riapri la pagina.",
     "demoScoreInvalid": "Inserisci un punteggio tra 0 e 100.",
     "demoRoundsInvalid": "Inserisci un intero da 1 a 100000 per le serie.",
-    "demoCreateConflict": "Questa richiesta ha già salvato un altro record. Controlla l’elenco."
+    "demoCreateConflict": "Questa richiesta ha già salvato un altro record. Controlla l’elenco.",
+    "caseNotStarted": "Apri prima l’immagine.",
+    "caseOutOfOrder": "Invia prima l’immagine corrente.",
+    "caseSyncRetry": "Sincronizza la risposta e riprova."
   },
   "historyTitle": "La tua cronologia di lettura",
   "historyResult": "Vedi risultati",
@@ -85,7 +88,7 @@ LoDLocales.it={
   "overlap": "Sovrapposizione · IoU",
   "overlapDesc": "Quanto i tuoi riquadri coincidono con il riferimento",
   "fp": "Falsi positivi",
-  "fpDesc": "Riquadri con posizione o tipo errati, oppure duplicati",
+  "fpDesc": "Le carie segnalate in eccesso hanno ¼ del peso di penalità delle omissioni. I falsi positivi periapicali mantengono il peso pieno.",
   "precision": "Precisione",
   "precisionDesc": "La quota dei tuoi riquadri associata a un reperto",
   "howTitle": "Individua. Segna. Rivedi.",
@@ -292,5 +295,14 @@ LoDLocales.it={
   "rankMineNote": "Solo tu puoi vedere questa scheda. I risultati contano quando completi una serie.",
   "rankNotYet": "Completa la prima serie per ottenere un punteggio e una posizione.",
   "rankAdminExcluded": "I punteggi degli amministratori sono privati ed esclusi dalla classifica pubblica.",
-  "rankMineFailed": "Impossibile caricare la tua posizione. Riapri la classifica."
+  "rankMineFailed": "Impossibile caricare la tua posizione. Riapri la classifica.",
+  "readingTime": "Tempo rimasto {time}",
+  "timeSubmitted": "Sono trascorsi due minuti. La risposta salvata è stata inviata automaticamente.",
+  "timeSyncFailed": "Tempo scaduto. Alla riconnessione invieremo la risposta salvata e apriremo la prossima immagine.",
+  "timerContinues": "Il limite di due minuti continua anche uscendo da questa schermata.",
+  "focusInstruction": "Segna solo carie e lesioni periapicali. Carie profonde e denti inclusi sono indicazioni IA. La risposta salvata viene inviata dopo due minuti per immagine.",
+  "aiContextTitle": "Indicazioni IA · non valutate",
+  "aiContextCount": "{n} previsioni di carie profonde / denti inclusi. Sono suggerimenti IA, non risposte verificate.",
+  "hideAi": "Nascondi IA",
+  "showAi": "Mostra IA"
 };

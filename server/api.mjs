@@ -4,6 +4,7 @@ import * as Payments from "./payments.mjs";
 import * as Demo from "./demo-leaderboard.mjs";
 import {publicLeaderboard,PUBLIC_RANK_LIMIT} from "./public-ranking.mjs";
 import {roundScores,individualLeaderboard,personalRanking} from "./league-ranking.mjs";
+import {timed,scopeFor,caseRecord,finishCase,expireDue,beginCase} from './timed-reading.mjs';
 const TERMS="2026-10-17-v2";
 const fail=(status,message)=>{throw Object.assign(new Error(message),{status});};
 const json=(data,status=200)=>new Response(JSON.stringify(data),{status,headers:{"Content-Type":"application/json; charset=utf-8","Cache-Control":"no-store","X-Content-Type-Options":"nosniff"}});
@@ -22,16 +23,16 @@ async function user(req,env,complete=true){if(!env.DB)fail(503,"게임 데이터
 const query=(db,sql,...args)=>db.prepare(sql).bind(...args);
 async function owned(db,rid,uid){const r=await query(db,"SELECT * FROM game_rounds WHERE id=? AND user_id=?",rid,uid).first();if(!r)fail(404,"라운드를 찾을 수 없습니다.");return r;}
 async function getRound(db,rid,uid){
- const r=await owned(db,rid,uid);
+ let r=await owned(db,rid,uid);await expireDue(db,r);r=await owned(db,rid,uid);
  const {results}=await query(db,"SELECT rc.*,c.width,c.height,c.scope_json,c.attribution,c.license,c.source FROM game_round_cases rc JOIN game_cases c ON c.id=rc.case_id WHERE rc.round_id=? ORDER BY position",rid).all();
- const items=results.map(c=>({id:c.case_id,position:c.position,width:c.width,height:c.height,scope:parse(c.scope_json),image_url:"/api/images/"+c.case_id+"?round="+rid,attribution:c.attribution,license:c.license,source:c.source,boxes:parse(c.submission_json||c.draft_json),revision:c.revision,submitted:!!c.submitted_at}));
+ const items=results.map(c=>({id:c.case_id,position:c.position,width:c.width,height:c.height,scope:scopeFor(c),image_url:"/api/images/"+c.case_id+"?round="+rid,attribution:c.attribution,license:c.license,source:c.source,boxes:parse(c.submission_json||c.draft_json),revision:c.revision,submitted:!!c.submitted_at,started_at:c.started_at,deadline_at:c.deadline_at,auto_submitted:!!c.auto_submitted,ai_context:c.started_at?parse(c.ai_context_json):null}));
  let result=null;
  if(r.state==="complete"){
  const details=results.map(c=>({id:c.case_id,position:c.position,scored:c.kind==="verified",grade:parse(c.grade_json),reference:c.kind==="verified"?parse(c.reference_json):null,reference_version:c.reference_version,explanation:c.kind==="verified"?c.explanation:null}));
- const current=r.rule_version===Game.version;
- result={score:current?Game.summary(details).score:null,max_score:100,legacy:!current,details:details.map(({grade,...feedback})=>feedback)};
+ const supported=[Game.version,Game.previousVersion].includes(r.rule_version);
+ result={score:supported?Game.summaryFor(r.rule_version,details).score:null,max_score:100,legacy:!supported,details:details.map(({grade,...feedback})=>feedback)};
  }
- return {id:r.id,state:r.state,feedback_mode:r.feedback_mode||"free",scored_target:r.scored_target,total_target:r.total_target,rule_version:r.rule_version,country:r.country,university:r.university,items,result};
+ return {id:r.id,state:r.state,feedback_mode:r.feedback_mode||"free",scored_target:r.scored_target,total_target:r.total_target,rule_version:r.rule_version,country:r.country,university:r.university,case_seconds:timed(r)?Game.caseSeconds:null,server_now:Auth.now(),items,result};
 }
 async function startRound(db,u,env){
  if(!env.IMAGES&&!env.IMAGE_SERVICE)fail(503,"영상 저장소를 연결하지 않았습니다.");
@@ -53,7 +54,7 @@ async function startRound(db,u,env){
  if(fresh.results.length<needed){
  const retry=await query(db,`SELECT c.*,cl.round_id AS previous_round,cl.user_id AS previous_user FROM game_cases c
  JOIN game_claims cl ON cl.case_id=c.id JOIN game_rounds old ON old.id=cl.round_id JOIN game_round_quality q ON q.round_id=old.id
- WHERE c.active=1 AND c.kind='unscored' AND old.state='complete' AND old.rule_version=?
+ WHERE c.active=1 AND c.kind='unscored' AND old.state='complete' AND old.rule_version IN ('lod-score-2',?)
  AND q.rule_version=old.rule_version AND q.eligible=0 AND q.reference_count>0 AND q.score IS NOT NULL
  AND NOT EXISTS(SELECT 1 FROM game_round_cases rc WHERE rc.case_id=c.id AND rc.user_id=?)
  AND NOT EXISTS(SELECT 1 FROM game_round_cases done JOIN game_round_quality pass ON pass.round_id=done.round_id WHERE done.case_id=c.id AND pass.eligible=1)
@@ -62,7 +63,7 @@ async function startRound(db,u,env){
  }
  }
  if(rows.length<total)fail(409,"아직 풀지 않은 검증 문제와 도전 문제가 충분하지 않습니다. 새 문제를 준비하고 있습니다.");
- if(!rows.some(c=>c.kind==="verified"&&parse(c.reference_json)?.length))fail(409,"채점 세트에 정답 병소가 있는 영상이 필요합니다.");
+ if(!rows.some(c=>c.kind==="verified"&&parse(c.reference_json)?.some(b=>Game.labelCategories.includes(b.category))))fail(409,"채점 세트에 정답 병소가 있는 영상이 필요합니다.");
  // Random order; do not disclose which cases are graded until all ten are submitted.
  for(let i=rows.length-1;i>0;i--){const a=new Uint32Array(1);crypto.getRandomValues(a);const j=a[0]%(i+1);[rows[i],rows[j]]=[rows[j],rows[i]];}
  const rid=crypto.randomUUID();
@@ -70,7 +71,8 @@ async function startRound(db,u,env){
  if(paid)statements.push(Payments.useCredit(db,paid,u.id,rid));
  for(let i=0;i<rows.length;i++){
  const c=rows[i];
- statements.push(query(db,"INSERT INTO game_round_cases(round_id,case_id,user_id,position,kind,reference_json,reference_version,explanation) VALUES(?,?,?,?,?,?,?,?)",rid,c.id,u.id,i,c.kind,c.reference_json,c.reference_version,c.explanation));
+ const reference=c.reference_json?JSON.stringify(parse(c.reference_json).filter(b=>Game.labelCategories.includes(b.category))):null;
+ statements.push(query(db,"INSERT INTO game_round_cases(round_id,case_id,user_id,position,kind,reference_json,reference_version,explanation,label_scope_json,ai_context_json) VALUES(?,?,?,?,?,?,?,?,?,(SELECT context_json FROM game_case_ai_context WHERE case_id=?))",rid,c.id,u.id,i,c.kind,reference,c.reference_version,c.explanation,JSON.stringify(Game.labelCategories),c.id));
  if(c.kind==="unscored"){
  if(!c.previous_round)statements.push(query(db,"INSERT INTO game_claims VALUES(?,?,?,?)",c.id,0,rid,u.id));
  else{
@@ -92,23 +94,22 @@ async function startRound(db,u,env){
  }
 }
 async function saveCase(req,db,rid,cid,u,submit){
- const r=await owned(db,rid,u.id);const c=await query(db,"SELECT rc.*,c.width,c.height,c.scope_json FROM game_round_cases rc JOIN game_cases c ON c.id=rc.case_id WHERE round_id=? AND case_id=?",rid,cid).first();
+ const r=await owned(db,rid,u.id);await expireDue(db,r);const c=await caseRecord(db,rid,cid);
  if(!c)fail(404,"배정되지 않은 영상입니다.");
  if(submit&&c.submitted_at)return getRound(db,rid,u.id);
  if(r.state!=="active"||c.submitted_at)fail(409,"이미 제출한 답은 변경할 수 없습니다.");
+ if(timed(r)&&!c.started_at)fail(409,'caseNotStarted');
  const b=await body(req);if(b.coordinate_system&&!Object.keys(Game.coordinateSystem).every(k=>b.coordinate_system[k]===Game.coordinateSystem[k]))fail(400,"좌표계 오류");
  if(!Number.isInteger(b.revision)||b.revision!==c.revision)fail(409,"다른 창에서 변경된 답이 있습니다. 다시 불러오세요.");
- const boxes=Game.boxes(b.boxes,{...c,scope:parse(c.scope_json)});const answer=JSON.stringify(boxes);
+ const boxes=Game.boxes(b.boxes,{...c,scope:scopeFor(c)});const answer=JSON.stringify(boxes);
  if(submit){
- const grade=c.kind==="verified"?(r.rule_version===Game.version?Game.grade:Game.legacyGrade)(boxes,parse(c.reference_json),{...c,scope:parse(c.scope_json)}):null;
- await db.batch([
- query(db,"UPDATE game_round_cases SET submission_json=?,draft_json=?,submitted_at=?,revision=revision+1,grade_json=?,points=? WHERE round_id=? AND case_id=? AND revision=? AND submitted_at IS NULL",answer,answer,Auth.now(),grade?JSON.stringify(grade):null,grade?.points??null,rid,cid,b.revision),
- query(db,"UPDATE game_rounds SET state='complete',completed_at=? WHERE id=? AND (SELECT COUNT(*) FROM game_round_cases WHERE round_id=? AND submitted_at IS NOT NULL)=total_target",Auth.now(),rid,rid)]);
+ await finishCase(db,r,c,boxes);await expireDue(db,r);
  const saved=await query(db,"SELECT submission_json FROM game_round_cases WHERE round_id=? AND case_id=?",rid,cid).first();
- if(saved.submission_json!==answer)fail(409,"다른 창에서 먼저 제출했습니다. 다시 불러오세요.");
+ const final=await caseRecord(db,rid,cid);
+ if(!final.auto_submitted&&saved.submission_json!==answer)fail(409,"다른 창에서 먼저 제출했습니다. 다시 불러오세요.");
  return getRound(db,rid,u.id);
  }
- const s=await query(db,"UPDATE game_round_cases SET draft_json=?,revision=revision+1 WHERE round_id=? AND case_id=? AND revision=? AND submitted_at IS NULL RETURNING revision",answer,rid,cid,b.revision).first();
+ const s=await query(db,"UPDATE game_round_cases SET draft_json=?,revision=revision+1 WHERE round_id=? AND case_id=? AND revision=? AND submitted_at IS NULL AND (deadline_at IS NULL OR deadline_at>?) RETURNING revision",answer,rid,cid,b.revision,Auth.now()).first();
  if(!s)fail(409,"다른 창에서 변경되었습니다.");return s;
 }
 async function stats(db,uid){return query(db,roundScores+` SELECT AVG(score) average,COUNT(*) rounds FROM round_scores WHERE user_id=?`,Game.version,uid).first();}
@@ -185,12 +186,13 @@ export async function handle(req,env){
  if(path==="/api/rounds"&&req.method==="POST")return json(await startRound(db,u,env));
  const rid=path.match(/^\/api\/rounds\/([a-zA-Z0-9-]+)$/);
  if(rid&&req.method==="GET")return json(await getRound(db,rid[1],u.id));
- const action=path.match(/^\/api\/rounds\/([a-zA-Z0-9-]+)\/cases\/([a-zA-Z0-9_-]+)\/(draft|submit)$/);
+ const action=path.match(/^\/api\/rounds\/([a-zA-Z0-9-]+)\/cases\/([a-zA-Z0-9_-]+)\/(draft|submit|begin)$/);
+ if(action&&req.method==='POST'&&action[3]==='begin'){const r=await owned(db,action[1],u.id);await beginCase(db,r,action[2]);return json(await getRound(db,r.id,u.id));}
  if(action&&req.method==="POST")return json(await saveCase(req,db,action[1],action[2],u,action[3]==="submit"));
  const image=path.match(/^\/api\/images\/([a-zA-Z0-9_-]+)$/);
  if(image&&req.method==="GET"){
  if(!env.IMAGES)fail(503,"영상 저장소를 연결하지 않았습니다.");
- const allowed=await query(db,"SELECT c.object_key FROM game_cases c JOIN game_round_cases rc ON rc.case_id=c.id JOIN game_rounds r ON r.id=rc.round_id WHERE c.id=? AND r.id=? AND r.user_id=?",image[1],url.searchParams.get("round"),u.id).first();
+ const allowed=await query(db,"SELECT c.object_key FROM game_cases c JOIN game_round_cases rc ON rc.case_id=c.id JOIN game_rounds r ON r.id=rc.round_id WHERE c.id=? AND r.id=? AND r.user_id=? AND (r.rule_version<>'lod-score-3' OR rc.started_at IS NOT NULL)",image[1],url.searchParams.get("round"),u.id).first();
  if(!allowed)fail(404,"배정되지 않은 영상입니다.");
  const object=await env.IMAGES.get(allowed.object_key);if(!object)fail(404,"영상을 찾을 수 없습니다.");
  return new Response(object.body,{headers:{"Content-Type":"image/png","Cache-Control":"private, no-store","X-Content-Type-Options":"nosniff"}});

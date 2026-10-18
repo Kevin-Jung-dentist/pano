@@ -29,7 +29,7 @@ LoDLocales.en={
   "overlap": "Box overlap · IoU",
   "overlapDesc": "How closely your boxes overlap the reference",
   "fp": "False positives",
-  "fpDesc": "Wrong-location, wrong-type or duplicate boxes",
+  "fpDesc": "Extra caries boxes have ¼ the penalty weight of missed findings. Periapical false positives retain their full weight.",
   "precision": "Precision",
   "precisionDesc": "The share of your boxes matched to a finding",
   "howTitle": "Find. Mark. Review.",
@@ -207,7 +207,10 @@ LoDLocales.en={
     "demoCreateInvalid": "Invalid creation request. Reopen this page.",
     "demoScoreInvalid": "Enter an average score between 0 and 100.",
     "demoRoundsInvalid": "Enter an integer from 1 to 100000 for completed sets.",
-    "demoCreateConflict": "This request already saved a different record. Check the admin list."
+    "demoCreateConflict": "This request already saved a different record. Check the admin list.",
+    "caseNotStarted": "Open the image first.",
+    "caseOutOfOrder": "Submit the current image first.",
+    "caseSyncRetry": "Sync your answer and try again."
   },
   "demoNav": "Preview",
   "seeExample": "Explore the reading experience",
@@ -292,5 +295,14 @@ LoDLocales.en={
   "rankMineNote": "Only you can see this card. Results count once a set is completed.",
   "rankNotYet": "Complete your first set to receive a score and rank.",
   "rankAdminExcluded": "Administrator scores are private and excluded from public rankings.",
-  "rankMineFailed": "Your standing could not be loaded. Please reopen the leaderboard."
+  "rankMineFailed": "Your standing could not be loaded. Please reopen the leaderboard.",
+  "readingTime": "Time left {time}",
+  "timeSubmitted": "Two minutes elapsed. Your saved answer was submitted automatically.",
+  "timeSyncFailed": "Time is up. When reconnected, your saved answer will be submitted and the next image will open.",
+  "timerContinues": "The two-minute limit continues when you leave this screen.",
+  "focusInstruction": "Mark caries and periapical lesions only. Deep caries and impacted teeth are AI context. Saved answers submit automatically after two minutes per image.",
+  "aiContextTitle": "AI context · not scored",
+  "aiContextCount": "{n} deep caries / impacted tooth predictions · AI suggestions, not verified answers.",
+  "hideAi": "Hide AI context",
+  "showAi": "Show AI context"
 };

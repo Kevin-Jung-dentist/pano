@@ -54,7 +54,10 @@ LoDLocales.es={
     "demoCreateInvalid": "Solicitud de creación inválida. Abre la página de nuevo.",
     "demoScoreInvalid": "Introduce una puntuación entre 0 y 100.",
     "demoRoundsInvalid": "Introduce un entero entre 1 y 100000 para las series.",
-    "demoCreateConflict": "Esta solicitud ya guardó otro registro. Revisa la lista de administración."
+    "demoCreateConflict": "Esta solicitud ya guardó otro registro. Revisa la lista de administración.",
+    "caseNotStarted": "Abre primero la imagen.",
+    "caseOutOfOrder": "Envía primero la imagen actual.",
+    "caseSyncRetry": "Sincroniza la respuesta y vuelve a intentarlo."
   },
   "historyTitle": "Tu historial de lecturas",
   "historyResult": "Ver resultados",
@@ -85,7 +88,7 @@ LoDLocales.es={
   "overlap": "Solapamiento · IoU",
   "overlapDesc": "Cuánto coinciden tus recuadros con la referencia",
   "fp": "Falsos positivos",
-  "fpDesc": "Recuadros con ubicación o tipo incorrectos, o duplicados",
+  "fpDesc": "Las detecciones extra de caries penalizan con ¼ del peso de las omisiones. Los falsos positivos periapicales mantienen su peso completo.",
   "precision": "Precisión",
   "precisionDesc": "La proporción de tus recuadros que coincide con un hallazgo",
   "howTitle": "Detecta. Marca. Revisa.",
@@ -292,5 +295,14 @@ LoDLocales.es={
   "rankMineNote": "Solo tú puedes ver esta tarjeta. Los resultados cuentan al completar cada serie.",
   "rankNotYet": "Completa tu primera serie para obtener una puntuación y una posición.",
   "rankAdminExcluded": "Las puntuaciones del administrador son privadas y no se incluyen en la clasificación pública.",
-  "rankMineFailed": "No se pudo cargar tu clasificación. Vuelve a abrir la tabla."
+  "rankMineFailed": "No se pudo cargar tu clasificación. Vuelve a abrir la tabla.",
+  "readingTime": "Tiempo restante {time}",
+  "timeSubmitted": "Han pasado dos minutos. Se envió automáticamente la respuesta guardada.",
+  "timeSyncFailed": "Se acabó el tiempo. Al reconectar se enviará la respuesta guardada y se abrirá la siguiente imagen.",
+  "timerContinues": "El límite de dos minutos continúa al salir de esta pantalla.",
+  "focusInstruction": "Marca solo caries y lesiones periapicales. Las caries profundas y los dientes retenidos son referencias de IA. La respuesta guardada se envía tras dos minutos por imagen.",
+  "aiContextTitle": "Referencia de IA · sin puntuación",
+  "aiContextCount": "{n} predicciones de caries profundas / dientes retenidos. Son sugerencias de IA, no respuestas verificadas.",
+  "hideAi": "Ocultar IA",
+  "showAi": "Mostrar IA"
 };

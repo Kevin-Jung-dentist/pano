@@ -54,7 +54,10 @@ LoDLocales.fr={
     "demoCreateInvalid": "Requête de création invalide. Rouvrez cette page.",
     "demoScoreInvalid": "Saisissez un score entre 0 et 100.",
     "demoRoundsInvalid": "Saisissez un entier de 1 à 100000 pour les séries.",
-    "demoCreateConflict": "Cette requête a déjà enregistré un autre record. Vérifiez la liste d’administration."
+    "demoCreateConflict": "Cette requête a déjà enregistré un autre record. Vérifiez la liste d’administration.",
+    "caseNotStarted": "Ouvrez d’abord l’image.",
+    "caseOutOfOrder": "Envoyez d’abord l’image actuelle.",
+    "caseSyncRetry": "Synchronisez la réponse et réessayez."
   },
   "historyTitle": "Votre historique de lecture",
   "historyResult": "Voir les résultats",
@@ -85,7 +88,7 @@ LoDLocales.fr={
   "overlap": "Chevauchement · IoU",
   "overlapDesc": "Le degré de chevauchement avec les cadres de référence",
   "fp": "Faux positifs",
-  "fpDesc": "Cadres au mauvais endroit, du mauvais type ou en double",
+  "fpDesc": "Les caries signalées en excès ont ¼ du poids de pénalité des omissions. Les faux positifs périapicaux conservent leur poids entier.",
   "precision": "Précision",
   "precisionDesc": "La proportion de vos cadres correspondant à une lésion",
   "howTitle": "Repérez. Marquez. Revoyez.",
@@ -292,5 +295,14 @@ LoDLocales.fr={
   "rankMineNote": "Cette fiche est visible uniquement par vous. Les résultats comptent une fois la série terminée.",
   "rankNotYet": "Terminez votre première série pour obtenir un score et un rang.",
   "rankAdminExcluded": "Les scores des administrateurs restent privés et sont exclus du classement public.",
-  "rankMineFailed": "Impossible de charger votre classement. Veuillez rouvrir le tableau."
+  "rankMineFailed": "Impossible de charger votre classement. Veuillez rouvrir le tableau.",
+  "readingTime": "Temps restant {time}",
+  "timeSubmitted": "Deux minutes écoulées. Votre réponse enregistrée a été envoyée automatiquement.",
+  "timeSyncFailed": "Temps écoulé. À la reconnexion, la réponse enregistrée sera envoyée et l’image suivante s’ouvrira.",
+  "timerContinues": "Le délai de deux minutes continue lorsque vous quittez cet écran.",
+  "focusInstruction": "Indiquez uniquement les caries et lésions périapicales. Les caries profondes et dents incluses sont des indications IA. La réponse enregistrée est envoyée après deux minutes par image.",
+  "aiContextTitle": "Indications IA · non notées",
+  "aiContextCount": "{n} prédictions de caries profondes / dents incluses. Suggestions IA, pas des réponses vérifiées.",
+  "hideAi": "Masquer l’IA",
+  "showAi": "Afficher l’IA"
 };

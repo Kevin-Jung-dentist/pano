@@ -4,10 +4,10 @@ import {generateKeyPair,SignJWT} from "jose";
 import G from "../dist/game-core.js";
 import {handle} from "../server/api.mjs";
 import {validateIdentity,digest,now} from "../server/auth.mjs";
-import {harness,ref} from "./game-harness.mjs";
+import {harness,ref,beginReading} from "./game-harness.mjs";
 const im={width:1200,height:650};
 const box=(id,bbox,category="caries_ungraded")=>({id,bbox,category,geometry:G.geometry[category]});
-async function call(h,path,data,who="alice"){const r=await handle(h.req(path,data,who),h.env);return {status:r.status,body:await r.json()};}
+async function call(h,path,data,who="alice"){await beginReading(h,path,who);const r=await handle(h.req(path,data,who),h.env);return {status:r.status,body:await r.json()};}
 test("one point per unique finding; duplicates and huge image boxes do not add points",()=>{
  const p=[box("p1",[310,220,370,280]),box("p2",[310,220,370,280]),box("whole",[0,0,1200,650])];
  const g=G.grade(p,ref,im);assert.equal(g.points,1);assert.equal(g.fp,2);assert.equal(g.fn,1);
@@ -90,9 +90,9 @@ test("100-point score penalizes missed lesions, imprecise boxes and false positi
  assert.equal(G.grade(ref,ref,im).score,100);
  assert.equal(G.grade([ref[0]],ref,im).score,50);
  assert.equal(G.grade([box("half",[310,220,340,280])],[ref[0]],im).score,50);
- const fp=G.grade([ref[0],box("wrong",[0,0,10,10])],[ref[0]],im);assert.equal(fp.score,50);assert.equal(fp.precision,.5);assert.equal(fp.recall,1);
+ const fp=G.grade([ref[0],box("wrong",[0,0,10,10])],[ref[0]],im);assert.equal(fp.score,75);assert.equal(fp.precision,.5);assert.equal(fp.recall,1);
  assert.equal(G.grade([],ref,im).score,0);assert.equal(G.grade([],[],im).score,null);
- assert.equal(G.summary([{scored:true,grade:G.grade(ref,ref,im)},{scored:true,grade:G.grade([box("wrong",[0,0,10,10])],[],im)}]).score,200/3);
+ assert.equal(G.summary([{scored:true,grade:G.grade(ref,ref,im)},{scored:true,grade:G.grade([box("wrong",[0,0,10,10])],[],im)}]).score,87.5);
 });
 test("one-to-one match maximizes overlap for the maximum number of findings",()=>{
  const r=[box("a",[0,0,20,20]),box("b",[10,0,30,20])],pred=[box("p",[0,0,20,20]),box("q",[10,0,30,20])];
@@ -150,5 +150,5 @@ test("13 of 26 exact findings score 50; overlap and false positives lower it",()
  const refs=Array.from({length:26},(_,i)=>box('r'+i,[(i%13)*40,Math.floor(i/13)*100,(i%13)*40+20,Math.floor(i/13)*100+20]));
  const exact=refs.slice(0,13);assert.equal(G.grade(exact,refs,im).score,50);
  const partial=exact.map(b=>({...b,bbox:[b.bbox[0],b.bbox[1],b.bbox[0]+16,b.bbox[3]]}));assert.ok(Math.abs(G.grade(partial,refs,im).score-40)<1e-9);
- assert.ok(Math.abs(G.grade([...exact,box('extra',[1000,500,1010,510])],refs,im).score-100*13/27)<1e-9);
+ assert.ok(Math.abs(G.grade([...exact,box('extra',[1000,500,1010,510])],refs,im).score-100*12.75/26)<1e-9);
 });

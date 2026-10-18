@@ -33,3 +33,14 @@ test('hidden boxes can pan and right-click is consumed by canvas only',()=>{
 test('switching tools cancels unfinished box without saving a partial annotation',()=>{
  const h=setup();h.editor.down(h.event(400,300));h.editor.move(h.event(450,350));h.editor.setMode('pan');assert.equal(h.editor.boxes.length,1);assert.equal(h.changes.length,0);assert.equal(h.editor.drag,null);assert.equal(h.canvas.style.cursor,'grab');
 });
+
+test('AI context cannot be selected, moved or serialized into human answers at any zoom',()=>{
+ for(const scale of [.2,1,2.4]){
+  const h=setup(scale),e=h.editor,before=JSON.stringify(e.boxes);
+  e.aiBoxes=[{id:'ai-context',category:'deep_caries',geometry:'tooth_box',bbox:[300,250,340,290]}];const ai=JSON.stringify(e.aiBoxes);
+  e.setMode('select');const at=(x,y)=>h.event(20+e.t.tx+x*scale,30+e.t.ty+y*scale);
+  e.down(at(320,270));e.up(at(330,280));assert.equal(e.selected,null);assert.equal(h.changes.length,0);
+  e.aiHidden=true;e.paint();e.aiHidden=false;e.paint();e.undo();e.remove();
+  assert.equal(JSON.stringify(e.boxes),before);assert.equal(JSON.stringify(e.aiBoxes),ai);assert.equal(e.history.length,0);
+ }
+});

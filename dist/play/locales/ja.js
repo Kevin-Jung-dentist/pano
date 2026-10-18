@@ -29,7 +29,7 @@ LoDLocales.ja={
   "overlap": "ボックス一致度 · IoU",
   "overlapDesc": "正解ボックスと自分のボックスが重なる度合い",
   "fp": "偽陽性",
-  "fpDesc": "位置・種類の誤り、または重複したボックス数",
+  "fpDesc": "う蝕の過剰検出は見逃しの¼の重みで減点します。根尖病変の誤検出は従来の重みを維持します。",
   "precision": "適合率",
   "precisionDesc": "描いたボックスのうち正解に対応する割合",
   "howTitle": "見つけて、囲んで、振り返る。",
@@ -207,7 +207,10 @@ LoDLocales.ja={
     "demoCreateInvalid": "追加リクエストが無効です。ページを開き直してください。",
     "demoScoreInvalid": "平均スコアは0から100で入力してください。",
     "demoRoundsInvalid": "完了セット数は1から100000の整数で入力してください。",
-    "demoCreateConflict": "このリクエストでは別の記録が保存済みです。管理者一覧を確認してください。"
+    "demoCreateConflict": "このリクエストでは別の記録が保存済みです。管理者一覧を確認してください。",
+    "caseNotStarted": "先に画像を開いてください。",
+    "caseOutOfOrder": "現在の画像を先に提出してください。",
+    "caseSyncRetry": "回答を同期して再試行してください。"
   },
   "demoNav": "読影例",
   "seeExample": "読影画面を見る",
@@ -292,5 +295,14 @@ LoDLocales.ja={
   "rankMineNote": "この欄は本人にのみ表示されます。完了したセットの結果が反映されます。",
   "rankNotYet": "最初のセットを完了すると、スコアと順位が反映されます。",
   "rankAdminExcluded": "管理者のスコアは本人にのみ表示され、公開ランキングには含まれません。",
-  "rankMineFailed": "成績を読み込めませんでした。ランキングを開き直してください。"
+  "rankMineFailed": "成績を読み込めませんでした。ランキングを開き直してください。",
+  "readingTime": "残り {time}",
+  "timeSubmitted": "2分が経過し、保存済みの回答を自動提出しました。",
+  "timeSyncFailed": "時間切れです。再接続後、保存済みの回答を提出して次の画像へ進みます。",
+  "timerContinues": "画面を離れても2分の制限時間は続きます。",
+  "focusInstruction": "う蝕と根尖病変のみを囲んでください。深在性う蝕・埋伏歯はAIの参考表示です。各画像は2分後に保存済み回答を自動提出します。",
+  "aiContextTitle": "AI参考表示・採点対象外",
+  "aiContextCount": "深在性う蝕・埋伏歯 {n}件。AI予測であり、確認済みの正解ではありません。",
+  "hideAi": "AI表示を隠す",
+  "showAi": "AI表示を表示"
 };

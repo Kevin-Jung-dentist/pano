@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {harness,ref} from './game-harness.mjs';
+import {harness,ref,beginReading} from './game-harness.mjs';
 import {handle} from '../server/api.mjs';
 const count=(h,table)=>h.DB.db.prepare(`SELECT COUNT(*) n FROM ${table}`).get().n;
 const tables=['game_users','game_sessions','game_rounds','game_round_cases','game_claims','game_round_quality','game_payments'];
@@ -42,7 +42,7 @@ test('rename persists and stale or invalid edits preserve the saved nickname',as
 test('individual and bulk deletion remove only demo rows, remain deleted, and cannot target real user ids',async()=>{
  const h=await harness();grant(h);
  const round=await (await handle(h.req('rounds',{},'bob'),h.env)).json();
- for(const c of round.items)assert.equal((await handle(h.req(`rounds/${round.id}/cases/${c.id}/submit`,{boxes:ref,revision:0},'bob'),h.env)).status,200);
+ for(const c of round.items){await beginReading(h,`rounds/${round.id}/cases/${c.id}/submit`,'bob');assert.equal((await handle(h.req(`rounds/${round.id}/cases/${c.id}/submit`,{boxes:ref,revision:0},'bob'),h.env)).status,200);}
  const before=state(h),realBefore=(await (await handle(h.req('leaderboard'),h.env)).json()).entries;
  assert.equal(realBefore.length,1);assert.equal(realBefore[0].average,100);
  assert.equal((await handle(h.req('admin/demos/alice/delete',{revision:0}),h.env)).status,404);
@@ -76,7 +76,7 @@ test('creation rejects invalid fields and foreign origins without any insertion'
 test('administrator records are excluded from every public ranking while personal history and scores remain',async()=>{
  const h=await harness();grant(h);
  const round=await (await handle(h.req('rounds',{}),h.env)).json();
- for(const c of round.items)await handle(h.req(`rounds/${round.id}/cases/${c.id}/submit`,{boxes:ref,revision:0}),h.env);
+ for(const c of round.items){await beginReading(h,`rounds/${round.id}/cases/${c.id}/submit`,'alice');await handle(h.req(`rounds/${round.id}/cases/${c.id}/submit`,{boxes:ref,revision:0}),h.env);}
  for(const mode of ['individual','country','university'])assert.deepEqual((await (await handle(h.req('leaderboard?group='+mode),h.env)).json()).entries,[]);
  const own=await (await handle(h.req('me'),h.env)).json();assert.equal(own.stats.rounds,1);assert.equal(own.stats.average,100);
  assert.equal((await (await handle(h.req('rounds'),h.env)).json()).rounds.length,1);

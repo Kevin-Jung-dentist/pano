@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {harness} from './game-harness.mjs';
+import {harness,beginReading} from './game-harness.mjs';
 import {handle} from '../server/api.mjs';
 import imageWorker from '../server/image-worker.mjs';
 
@@ -12,6 +12,8 @@ test('private image service checks session and assignment before serving unchang
  const bytes=new Uint8Array([137,80,78,71,13,10,26,10,12,35]);let calls=0;
  h.env.ASSETS={fetch:async req=>{calls++;assert.equal(req.headers.get('Cookie'),null);assert.equal(new URL(req.url).pathname,'/lod/hanoi/'+round.items[0].id+'.png');return new Response(bytes,{headers:{'Content-Type':'image/png'}});}};
  h.env.IMAGE_SERVICE={fetch:req=>imageWorker.fetch(req,h.env)};
+ assert.equal((await handle(h.req(path),h.env)).status,404);
+ await handle(h.req('rounds/'+round.id+'/cases/'+round.items[0].id+'/begin',{}),h.env);
  const good=await handle(h.req(path),h.env);assert.equal(good.status,200);assert.deepEqual(new Uint8Array(await good.arrayBuffer()),bytes);assert.equal(good.headers.get('Cache-Control'),'private, no-store');
  assert.equal((await handle(h.req(path,undefined,'bob'),h.env)).status,404);
  assert.equal((await imageWorker.fetch(new Request(h.env.APP_ORIGIN+'/api/'+path),h.env)).status,401);
