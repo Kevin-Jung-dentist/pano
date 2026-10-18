@@ -17,7 +17,7 @@ export function collectCandidates(bundle,manifest,directory){
   if(!Number.isFinite(c.validation_score)||!Number.isFinite(c.quality_threshold)||c.validation_score<c.quality_threshold||c.training_ready!==false||c.review_state!=='candidate_needs_review')throw Error('Candidate quality gate or review state failed');
   if(!c.round_id||!c.user_id||!Object.keys(Game.coordinateSystem).every(k=>c.coordinate_system?.[k]===Game.coordinateSystem[k]))throw Error('Invalid candidate identity or coordinates');
   const scope=c.scope_json?JSON.parse(c.scope_json):source.scope;
-  if(!Array.isArray(scope)||scope.some(x=>!source.scope.includes(x))||(c.rule_version===Game.version&&(scope.length!==2||Game.labelCategories.some(x=>!scope.includes(x)))))throw Error('Candidate label scope mismatch');
+  if(!Array.isArray(scope)||scope.some(x=>!source.scope.includes(x))||(Game.timedVersions.includes(c.rule_version)&&(scope.length!==2||Game.labelCategories.some(x=>!scope.includes(x)))))throw Error('Candidate label scope mismatch');
   const boxes=Game.boxes(c.boxes,{...source,scope}),id=crypto.createHash('sha256').update(c.round_id+'\0'+c.case_id).digest('hex');if(seen.has(id))throw Error('Duplicate candidate in export');seen.add(id);
   const image=inside(source.local_image);
   return {...c,candidate_id:id,boxes,auto_submitted:!!c.auto_submitted,unmarked_regions:c.auto_submitted?'unknown':'reviewed_within_scope',coverage:c.auto_submitted?'partial':'complete_for_scope',local_image:image,image_available:fs.existsSync(image),split:'train',license:source.license,attribution:source.attribution,pixel_hash:source.pixel_hash,review_state:'candidate_needs_review',training_ready:false};

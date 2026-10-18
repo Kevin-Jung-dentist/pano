@@ -6,7 +6,7 @@ function setup(scale=1){
  const canvas={style:{},getContext:()=>ctx2d,addEventListener:(k,fn)=>events[k]=fn,getBoundingClientRect:()=>({left:20,top:30,width:900,height:600}),focus(){},setPointerCapture(id){this.capture=id;},hasPointerCapture(id){return this.capture===id;},releasePointerCapture(){this.capture=null;},closest:()=>null};
  const window={PanoGame:G,devicePixelRatio:2,addEventListener:(k,fn)=>keys[k]=fn,LoDI18n:{t:k=>k}};
  const document={getElementById:id=>{if(!buttons.has(id))buttons.set(id,{classList:{toggle(){}},setAttribute(){}});return buttons.get(id);}};
- const context=vm.createContext({window,document,crypto,structuredClone,ResizeObserver:class{observe(){}},Image:class{}});vm.runInContext(fs.readFileSync('dist/play/canvas.js','utf8'),context);
+ const context=vm.createContext({window,document,crypto,structuredClone,ResizeObserver:class{observe(){}},Image:class{set src(value){this.naturalWidth=1200;this.naturalHeight=650;this.onload();}}});vm.runInContext(fs.readFileSync('dist/play/canvas.js','utf8'),context);
  const editor=new window.PanoBoxEditor(canvas,b=>changes.push(b),()=>{});editor.ready=true;editor.im={width:1200,height:650};editor.image={};editor.t={scale,tx:40,ty:50};
  editor.boxes=[{id:'original',category:'caries_ungraded',geometry:'lesion_box',bbox:[100.125,100.5,180.75,180.25]}];
  const event=(x,y,button=0)=>({clientX:x,clientY:y,button,pointerId:1,preventDefault(){},target:{tagName:'CANVAS'}});
@@ -43,4 +43,10 @@ test('AI context cannot be selected, moved or serialized into human answers at a
   e.aiHidden=true;e.paint();e.aiHidden=false;e.paint();e.undo();e.remove();
   assert.equal(JSON.stringify(e.boxes),before);assert.equal(JSON.stringify(e.aiBoxes),ai);assert.equal(e.history.length,0);
  }
+});
+
+test('loading an image ignores AI context even if an old response still contains it',async()=>{
+ const h=setup(),e=h.editor;
+ await e.load({width:1200,height:650,image_url:'fixture',ai_context:{boxes:[{id:'hint',category:'deep_caries',geometry:'tooth_box',bbox:[300,250,340,290]}]}},[]);
+ assert.equal(e.ready,true);assert.equal(e.boxes.length,0);assert.equal(e.aiBoxes,undefined);assert.equal(h.changes.length,0);
 });

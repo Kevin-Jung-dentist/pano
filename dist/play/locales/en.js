@@ -300,9 +300,6 @@ LoDLocales.en={
   "timeSubmitted": "Two minutes elapsed. Your saved answer was submitted automatically.",
   "timeSyncFailed": "Time is up. When reconnected, your saved answer will be submitted and the next image will open.",
   "timerContinues": "The two-minute limit continues when you leave this screen.",
-  "focusInstruction": "Mark caries and periapical lesions only. Deep caries and impacted teeth are AI context. Saved answers submit automatically after two minutes per image.",
-  "aiContextTitle": "AI context · not scored",
-  "aiContextCount": "{n} deep caries / impacted tooth predictions · AI suggestions, not verified answers.",
-  "hideAi": "Hide AI context",
-  "showAi": "Show AI context"
+  "focusInstruction": "Mark caries (including deep caries) and periapical lesions on the original image. Saved answers submit automatically after two minutes per image.",
+  "deepContainmentFeedback": "Green dashed boxes mark teeth with verified deep caries. A caries box fully inside is accepted; each finding counts once. The dashed box is not an exact caries boundary."
 };

@@ -17,7 +17,7 @@ class BoxEditor{
  window.addEventListener("keyup",e=>{if(e.code==="Space"){this.space=false;this.cursor();}});
  }
  async load(im,boxes){
- this.ready=false;this.im=im;this.boxes=structuredClone(boxes);this.aiBoxes=structuredClone(im.ai_context?.boxes||[]);this.aiHidden=false;this.history=[];this.future=[];this.selected=null;this.hidden=false;this.drag=null;const token=Symbol();this.loading=token;
+ this.ready=false;this.im=im;this.boxes=structuredClone(boxes);this.history=[];this.future=[];this.selected=null;this.hidden=false;this.drag=null;const token=Symbol();this.loading=token;
  const img=new Image();await new Promise((resolve,reject)=>{img.onload=resolve;img.onerror=()=>reject(Error("영상을 불러오지 못했습니다. 다시 시도하세요."));img.src=im.image_url;});
  if(this.loading!==token)return;
  if(img.naturalWidth!==im.width||img.naturalHeight!==im.height)throw Error("원본 영상 크기가 일치하지 않습니다.");
@@ -65,7 +65,6 @@ class BoxEditor{
  const r=this.canvas.getBoundingClientRect();if(!r.width||!r.height)return;const dpr=window.devicePixelRatio||1;this.canvas.width=Math.round(r.width*dpr);this.canvas.height=Math.round(r.height*dpr);
  const c=this.ctx;c.setTransform(this.canvas.width/r.width,0,0,this.canvas.height/r.height,0,0);c.fillStyle="#090c11";c.fillRect(0,0,r.width,r.height);if(!this.ready)return;
  c.translate(this.t.tx,this.t.ty);c.scale(this.t.scale,this.t.scale);c.drawImage(this.image,0,0);
- if(!this.aiHidden)for(const b of this.aiBoxes||[]){const a=b.bbox;c.save();c.strokeStyle=colors[b.category];c.fillStyle=colors[b.category];c.lineWidth=1.5/this.t.scale;c.setLineDash([6/this.t.scale,4/this.t.scale]);c.strokeRect(a[0],a[1],a[2]-a[0],a[3]-a[1]);c.font=11/this.t.scale+'px sans-serif';c.fillText('AI · '+window.LoDI18n.t(b.category),a[0],Math.max(12/this.t.scale,a[1]-4/this.t.scale));c.restore();}
  if(this.hidden)return;
  this.boxes.forEach((b,i)=>{const a=b.bbox;c.strokeStyle=colors[b.category];c.lineWidth=(b.id===this.selected?3:2)/this.t.scale;c.strokeRect(a[0],a[1],a[2]-a[0],a[3]-a[1]);c.font=12/this.t.scale+"px sans-serif";c.fillStyle=colors[b.category];c.fillText(String(i+1),a[0]+3/this.t.scale,Math.max(14/this.t.scale,a[1]-4/this.t.scale));if(b.id===this.selected){const z=7/this.t.scale;[[a[0],a[1]],[a[2],a[1]],[a[2],a[3]],[a[0],a[3]]].forEach(p=>c.fillRect(p[0]-z/2,p[1]-z/2,z,z));}});
  }

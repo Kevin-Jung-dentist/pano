@@ -300,9 +300,6 @@ LoDLocales.it={
   "timeSubmitted": "Sono trascorsi due minuti. La risposta salvata è stata inviata automaticamente.",
   "timeSyncFailed": "Tempo scaduto. Alla riconnessione invieremo la risposta salvata e apriremo la prossima immagine.",
   "timerContinues": "Il limite di due minuti continua anche uscendo da questa schermata.",
-  "focusInstruction": "Segna solo carie e lesioni periapicali. Carie profonde e denti inclusi sono indicazioni IA. La risposta salvata viene inviata dopo due minuti per immagine.",
-  "aiContextTitle": "Indicazioni IA · non valutate",
-  "aiContextCount": "{n} previsioni di carie profonde / denti inclusi. Sono suggerimenti IA, non risposte verificate.",
-  "hideAi": "Nascondi IA",
-  "showAi": "Mostra IA"
+  "focusInstruction": "Segna carie (anche profonde) e lesioni periapicali sull’immagine originale. La risposta salvata viene inviata dopo due minuti per immagine.",
+  "deepContainmentFeedback": "I riquadri verdi tratteggiati indicano denti con carie profonde verificate. Un riquadro di carie interamente all’interno è accettato; ogni lesione conta una sola volta. Il tratteggio non indica il confine esatto della carie."
 };

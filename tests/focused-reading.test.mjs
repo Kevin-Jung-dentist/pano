@@ -21,15 +21,15 @@ test('one extra caries box has one quarter the penalty of one missed exact findi
  assert.equal(Game.gradeV2([...ref,box('extra')],ref,im).score,200/3);
 });
 
-test('new rounds freeze only two human label classes and independent unverified AI context',async()=>{
+test('new rounds expose only human drafts, retain verified deep-caries references privately, and never copy AI hints',async()=>{
  const h=await harness(),ai={schema:'lod-ai-context-v1',origin:'ai_prediction',review_state:'unverified',version:'fixture',boxes:[box('ai1','deep_caries'),box('ai2','impacted_tooth',[20,20,30,30])]};
  h.DB.db.prepare('UPDATE game_cases SET reference_json=? WHERE kind=?').run(JSON.stringify([...ref,box('gold-deep','deep_caries')]),'verified');
  for(const c of h.DB.db.prepare('SELECT id FROM game_cases').all())h.DB.db.prepare('INSERT INTO game_case_ai_context VALUES(?,?,?)').run(c.id,JSON.stringify(ai),now());
- let r=await start(h);assert.equal(r.case_seconds,120);assert.ok(r.items.every(c=>JSON.stringify(c.scope)===JSON.stringify(Game.labelCategories)&&c.ai_context===null));
+ let r=await start(h);assert.equal(r.case_seconds,120);assert.ok(r.items.every(c=>JSON.stringify(c.scope)===JSON.stringify(Game.labelCategories)&&!('ai_context' in c)));
  h.DB.db.exec("UPDATE game_case_ai_context SET context_json='{}'");
- r=(await open(h,r,r.items[0])).body;const c=r.items[0];assert.deepEqual(c.ai_context,ai);assert.deepEqual(c.boxes,[]);assert.ok(!JSON.stringify(r).includes('gold-deep'));
+ r=(await open(h,r,r.items[0])).body;const c=r.items[0];assert.ok(!('ai_context' in c));assert.deepEqual(c.boxes,[]);assert.ok(!JSON.stringify(r).includes('gold-deep'));assert.ok(!JSON.stringify(r).includes('ai1'));
  assert.equal((await submit(h,r,c,[box('bad','deep_caries')])).status,400);
- const snap=h.DB.db.prepare("SELECT reference_json FROM game_round_cases WHERE round_id=? AND kind='verified'").all(r.id);assert.ok(snap.every(c=>JSON.parse(c.reference_json).length===2));
+ const snap=h.DB.db.prepare("SELECT reference_json,ai_context_json FROM game_round_cases WHERE round_id=? AND kind='verified'").all(r.id);assert.ok(snap.every(c=>JSON.parse(c.reference_json).length===3&&c.ai_context_json===null));
 });
 
 test('two-minute timer cannot be reset by reload, repeated begin or client timestamps; future images and edits require sequential opening',async()=>{

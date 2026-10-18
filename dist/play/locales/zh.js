@@ -300,9 +300,6 @@ LoDLocales.zh={
   "timeSubmitted": "两分钟已到，已自动提交保存的答案。",
   "timeSyncFailed": "时间已到。重新连接后将提交已保存的答案并进入下一张。",
   "timerContinues": "离开此页面后，两分钟倒计时仍会继续。",
-  "focusInstruction": "仅标注龋齿和根尖病变。深龋与阻生牙为AI参考提示。每张图两分钟后自动提交已保存答案。",
-  "aiContextTitle": "AI参考提示 · 不计分",
-  "aiContextCount": "深龋／阻生牙预测 {n} 个 · AI预测并非核实后的标准答案。",
-  "hideAi": "隐藏AI提示",
-  "showAi": "显示AI提示"
+  "focusInstruction": "请在原始影像上仅标注龋齿（包括深龋）和根尖病变。每张图两分钟后自动提交已保存答案。",
+  "deepContainmentFeedback": "绿色虚线框表示已确认有深龋的牙齿。完全位于框内的龋齿标注计为正确，同一病变只计一次。虚线并非精确的龋损边界。"
 };

@@ -13,7 +13,7 @@ export default {
   if (!user.consent_at) return reject(409);
   const assigned = await env.DB.prepare(`SELECT c.object_key FROM game_cases c
    JOIN game_round_cases rc ON rc.case_id=c.id JOIN game_rounds r ON r.id=rc.round_id
-   WHERE c.id=? AND r.id=? AND r.user_id=? AND (r.rule_version<>'lod-score-3' OR rc.started_at IS NOT NULL)`).bind(match[1],url.searchParams.get('round'),user.id).first();
+   WHERE c.id=? AND r.id=? AND r.user_id=? AND (r.rule_version NOT IN ('lod-score-3','lod-score-4') OR rc.started_at IS NOT NULL)`).bind(match[1],url.searchParams.get('round'),user.id).first();
   if (!assigned || !/^lod\/hanoi\/[a-zA-Z0-9_-]+\.png$/.test(assigned.object_key)) return reject(404);
   // Never forward cookies, range/cache headers, or user-supplied paths to the asset server.
   const image = await env.ASSETS.fetch(new Request('https://assets.internal/'+assigned.object_key));

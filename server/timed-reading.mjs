@@ -1,7 +1,7 @@
 import Game from '../dist/game-core.js';
 import {now} from './auth.mjs';
 const error=(status,message)=>{throw Object.assign(new Error(message),{status});};
-export const timed=round=>round.rule_version===Game.version;
+export const timed=round=>Game.timedVersions.includes(round.rule_version);
 export const scopeFor=c=>JSON.parse(c.label_scope_json||c.scope_json);
 export async function caseRecord(db,rid,cid){
  return db.prepare('SELECT rc.*,c.width,c.height,c.scope_json FROM game_round_cases rc JOIN game_cases c ON c.id=rc.case_id WHERE round_id=? AND case_id=?').bind(rid,cid).first();

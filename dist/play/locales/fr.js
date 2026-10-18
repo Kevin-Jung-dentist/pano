@@ -300,9 +300,6 @@ LoDLocales.fr={
   "timeSubmitted": "Deux minutes écoulées. Votre réponse enregistrée a été envoyée automatiquement.",
   "timeSyncFailed": "Temps écoulé. À la reconnexion, la réponse enregistrée sera envoyée et l’image suivante s’ouvrira.",
   "timerContinues": "Le délai de deux minutes continue lorsque vous quittez cet écran.",
-  "focusInstruction": "Indiquez uniquement les caries et lésions périapicales. Les caries profondes et dents incluses sont des indications IA. La réponse enregistrée est envoyée après deux minutes par image.",
-  "aiContextTitle": "Indications IA · non notées",
-  "aiContextCount": "{n} prédictions de caries profondes / dents incluses. Suggestions IA, pas des réponses vérifiées.",
-  "hideAi": "Masquer l’IA",
-  "showAi": "Afficher l’IA"
+  "focusInstruction": "Indiquez les caries (y compris profondes) et les lésions périapicales sur l’image originale. La réponse enregistrée est envoyée après deux minutes par image.",
+  "deepContainmentFeedback": "Les cadres verts en pointillés indiquent les dents avec une carie profonde vérifiée. Un cadre de carie entièrement à l’intérieur est accepté ; chaque lésion compte une fois. Les pointillés ne sont pas la limite exacte de la carie."
 };

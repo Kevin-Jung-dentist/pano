@@ -300,9 +300,6 @@ LoDLocales.es={
   "timeSubmitted": "Han pasado dos minutos. Se envió automáticamente la respuesta guardada.",
   "timeSyncFailed": "Se acabó el tiempo. Al reconectar se enviará la respuesta guardada y se abrirá la siguiente imagen.",
   "timerContinues": "El límite de dos minutos continúa al salir de esta pantalla.",
-  "focusInstruction": "Marca solo caries y lesiones periapicales. Las caries profundas y los dientes retenidos son referencias de IA. La respuesta guardada se envía tras dos minutos por imagen.",
-  "aiContextTitle": "Referencia de IA · sin puntuación",
-  "aiContextCount": "{n} predicciones de caries profundas / dientes retenidos. Son sugerencias de IA, no respuestas verificadas.",
-  "hideAi": "Ocultar IA",
-  "showAi": "Mostrar IA"
+  "focusInstruction": "Marca caries (incluidas las profundas) y lesiones periapicales en la imagen original. La respuesta guardada se envía tras dos minutos por imagen.",
+  "deepContainmentFeedback": "Los recuadros verdes discontinuos indican dientes con caries profundas verificadas. Un recuadro de caries totalmente dentro se acepta; cada lesión cuenta una vez. La línea discontinua no es el límite exacto de la caries."
 };

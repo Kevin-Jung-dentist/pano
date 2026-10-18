@@ -25,11 +25,11 @@ async function owned(db,rid,uid){const r=await query(db,"SELECT * FROM game_roun
 async function getRound(db,rid,uid){
  let r=await owned(db,rid,uid);await expireDue(db,r);r=await owned(db,rid,uid);
  const {results}=await query(db,"SELECT rc.*,c.width,c.height,c.scope_json,c.attribution,c.license,c.source FROM game_round_cases rc JOIN game_cases c ON c.id=rc.case_id WHERE rc.round_id=? ORDER BY position",rid).all();
- const items=results.map(c=>({id:c.case_id,position:c.position,width:c.width,height:c.height,scope:scopeFor(c),image_url:"/api/images/"+c.case_id+"?round="+rid,attribution:c.attribution,license:c.license,source:c.source,boxes:parse(c.submission_json||c.draft_json),revision:c.revision,submitted:!!c.submitted_at,started_at:c.started_at,deadline_at:c.deadline_at,auto_submitted:!!c.auto_submitted,ai_context:c.started_at?parse(c.ai_context_json):null}));
+ const items=results.map(c=>({id:c.case_id,position:c.position,width:c.width,height:c.height,scope:scopeFor(c),image_url:"/api/images/"+c.case_id+"?round="+rid,attribution:c.attribution,license:c.license,source:c.source,boxes:parse(c.submission_json||c.draft_json),revision:c.revision,submitted:!!c.submitted_at,started_at:c.started_at,deadline_at:c.deadline_at,auto_submitted:!!c.auto_submitted}));
  let result=null;
  if(r.state==="complete"){
  const details=results.map(c=>({id:c.case_id,position:c.position,scored:c.kind==="verified",grade:parse(c.grade_json),reference:c.kind==="verified"?parse(c.reference_json):null,reference_version:c.reference_version,explanation:c.kind==="verified"?c.explanation:null}));
- const supported=[Game.version,Game.previousVersion].includes(r.rule_version);
+ const supported=Game.scoredVersions.includes(r.rule_version);
  result={score:supported?Game.summaryFor(r.rule_version,details).score:null,max_score:100,legacy:!supported,details:details.map(({grade,...feedback})=>feedback)};
  }
  return {id:r.id,state:r.state,feedback_mode:r.feedback_mode||"free",scored_target:r.scored_target,total_target:r.total_target,rule_version:r.rule_version,country:r.country,university:r.university,case_seconds:timed(r)?Game.caseSeconds:null,server_now:Auth.now(),items,result};
@@ -54,7 +54,7 @@ async function startRound(db,u,env){
  if(fresh.results.length<needed){
  const retry=await query(db,`SELECT c.*,cl.round_id AS previous_round,cl.user_id AS previous_user FROM game_cases c
  JOIN game_claims cl ON cl.case_id=c.id JOIN game_rounds old ON old.id=cl.round_id JOIN game_round_quality q ON q.round_id=old.id
- WHERE c.active=1 AND c.kind='unscored' AND old.state='complete' AND old.rule_version IN ('lod-score-2',?)
+ WHERE c.active=1 AND c.kind='unscored' AND old.state='complete' AND old.rule_version IN ('lod-score-2','lod-score-3',?)
  AND q.rule_version=old.rule_version AND q.eligible=0 AND q.reference_count>0 AND q.score IS NOT NULL
  AND NOT EXISTS(SELECT 1 FROM game_round_cases rc WHERE rc.case_id=c.id AND rc.user_id=?)
  AND NOT EXISTS(SELECT 1 FROM game_round_cases done JOIN game_round_quality pass ON pass.round_id=done.round_id WHERE done.case_id=c.id AND pass.eligible=1)
@@ -63,7 +63,7 @@ async function startRound(db,u,env){
  }
  }
  if(rows.length<total)fail(409,"아직 풀지 않은 검증 문제와 도전 문제가 충분하지 않습니다. 새 문제를 준비하고 있습니다.");
- if(!rows.some(c=>c.kind==="verified"&&parse(c.reference_json)?.some(b=>Game.labelCategories.includes(b.category))))fail(409,"채점 세트에 정답 병소가 있는 영상이 필요합니다.");
+ if(!rows.some(c=>c.kind==="verified"&&parse(c.reference_json)?.some(b=>Game.referenceCategories.includes(b.category))))fail(409,"채점 세트에 정답 병소가 있는 영상이 필요합니다.");
  // Random order; do not disclose which cases are graded until all ten are submitted.
  for(let i=rows.length-1;i>0;i--){const a=new Uint32Array(1);crypto.getRandomValues(a);const j=a[0]%(i+1);[rows[i],rows[j]]=[rows[j],rows[i]];}
  const rid=crypto.randomUUID();
@@ -71,8 +71,8 @@ async function startRound(db,u,env){
  if(paid)statements.push(Payments.useCredit(db,paid,u.id,rid));
  for(let i=0;i<rows.length;i++){
  const c=rows[i];
- const reference=c.reference_json?JSON.stringify(parse(c.reference_json).filter(b=>Game.labelCategories.includes(b.category))):null;
- statements.push(query(db,"INSERT INTO game_round_cases(round_id,case_id,user_id,position,kind,reference_json,reference_version,explanation,label_scope_json,ai_context_json) VALUES(?,?,?,?,?,?,?,?,?,(SELECT context_json FROM game_case_ai_context WHERE case_id=?))",rid,c.id,u.id,i,c.kind,reference,c.reference_version,c.explanation,JSON.stringify(Game.labelCategories),c.id));
+ const reference=c.reference_json?JSON.stringify(parse(c.reference_json).filter(b=>Game.referenceCategories.includes(b.category))):null;
+ statements.push(query(db,"INSERT INTO game_round_cases(round_id,case_id,user_id,position,kind,reference_json,reference_version,explanation,label_scope_json) VALUES(?,?,?,?,?,?,?,?,?)",rid,c.id,u.id,i,c.kind,reference,c.reference_version,c.explanation,JSON.stringify(Game.labelCategories)));
  if(c.kind==="unscored"){
  if(!c.previous_round)statements.push(query(db,"INSERT INTO game_claims VALUES(?,?,?,?)",c.id,0,rid,u.id));
  else{
@@ -192,7 +192,7 @@ export async function handle(req,env){
  const image=path.match(/^\/api\/images\/([a-zA-Z0-9_-]+)$/);
  if(image&&req.method==="GET"){
  if(!env.IMAGES)fail(503,"영상 저장소를 연결하지 않았습니다.");
- const allowed=await query(db,"SELECT c.object_key FROM game_cases c JOIN game_round_cases rc ON rc.case_id=c.id JOIN game_rounds r ON r.id=rc.round_id WHERE c.id=? AND r.id=? AND r.user_id=? AND (r.rule_version<>'lod-score-3' OR rc.started_at IS NOT NULL)",image[1],url.searchParams.get("round"),u.id).first();
+ const allowed=await query(db,"SELECT c.object_key FROM game_cases c JOIN game_round_cases rc ON rc.case_id=c.id JOIN game_rounds r ON r.id=rc.round_id WHERE c.id=? AND r.id=? AND r.user_id=? AND (r.rule_version NOT IN ('lod-score-3','lod-score-4') OR rc.started_at IS NOT NULL)",image[1],url.searchParams.get("round"),u.id).first();
  if(!allowed)fail(404,"배정되지 않은 영상입니다.");
  const object=await env.IMAGES.get(allowed.object_key);if(!object)fail(404,"영상을 찾을 수 없습니다.");
  return new Response(object.body,{headers:{"Content-Type":"image/png","Cache-Control":"private, no-store","X-Content-Type-Options":"nosniff"}});

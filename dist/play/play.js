@@ -42,7 +42,7 @@ async function launch(){
  if(!me.profile_complete){fillProfile();return;}
  try{$("start").disabled=true;practice=false;round=await api("rounds",{});await refreshMe();await showNext();}catch(e){notice(e.message);}finally{$("start").disabled=false;}
 }
-function gameLabels(){if(!current)return;$("case-title").textContent=t("caseTitle",{n:current.position+1,total:round.total_target});$("round-label").textContent=t(practice?"practiceLabel":"roundLabel");$("draft-status").textContent=t(statusKey);$("hide-boxes").textContent=t(editor.hidden?"show":"hide");$("focus-instruction").hidden=round.rule_version!==G.version&&!practice;$("ai-context").hidden=!current.ai_context;$("ai-context-count").textContent=t('aiContextCount',{n:current.ai_context?.boxes?.length||0});$("toggle-ai").textContent=t(editor.aiHidden?'showAi':'hideAi');if(practice)$("attribution").textContent=t("practiceAttribution");}
+function gameLabels(){if(!current)return;$("case-title").textContent=t("caseTitle",{n:current.position+1,total:round.total_target});$("round-label").textContent=t(practice?"practiceLabel":"roundLabel");$("draft-status").textContent=t(statusKey);$("hide-boxes").textContent=t(editor.hidden?"show":"hide");$("focus-instruction").hidden=!G.timedVersions.includes(round.rule_version)&&!practice;if(practice)$("attribution").textContent=t("practiceAttribution");}
 function stopReadingTimer(){clearInterval(readingTimer);readingTimer=null;deadlineClock=null;$("reading-time").hidden=true;}
 function startReadingTimer(){
  stopReadingTimer();if(practice||!current.deadline_at)return;
@@ -75,7 +75,7 @@ async function submit(expired=false){
 function renderReference(item,detail,host){
  const alt=t(detail.practice?"practiceOwnAlt":"compareAlt");const img=new Image();img.alt=alt;img.onload=()=>{
  const c=document.createElement("canvas");c.width=item.width;c.height=item.height;const x=c.getContext("2d");x.drawImage(img,0,0);
- function draw(boxes,color){x.strokeStyle=color;x.lineWidth=Math.max(2,item.width/600);for(const b of boxes){const a=b.bbox;x.strokeRect(a[0],a[1],a[2]-a[0],a[3]-a[1]);}}
+ function draw(boxes,color){x.strokeStyle=color;x.lineWidth=Math.max(2,item.width/600);for(const b of boxes){x.setLineDash(b.category==='deep_caries'?[item.width/100,item.width/160]:[]);const a=b.bbox;x.strokeRect(a[0],a[1],a[2]-a[0],a[3]-a[1]);}x.setLineDash([]);}
  draw(detail.reference||[],"#79ef8e");draw(item.boxes,"#ffc45e");const out=new Image();out.alt=alt;out.src=c.toDataURL("image/png");host.append(out);
  };img.onerror=()=>host.append(document.createTextNode(t("compareFailed")));img.src=item.image_url;
 }
@@ -88,6 +88,7 @@ async function showResults(scroll=true){
  title.textContent=d.scored?t("caseFeedback",{n:d.position+1}):t("caseLimited",{n:d.position+1});row.append(title);
  const text=document.createElement("p");text.textContent=d.scored?t(practice?"practiceNotice":"defaultExplanation"):t("limitedFeedback");row.append(text);
  if(d.scored){
+ if(round.rule_version===G.version&&d.reference?.some(b=>b.category==='deep_caries')){const note=document.createElement('p');note.textContent=t('deepContainmentFeedback');row.append(note);}
 
  if(d.explanation){const explanation=document.createElement("p");explanation.textContent=t("sourceExplanation")+": "+d.explanation;row.append(explanation);}
  const legend=document.createElement("p");legend.className="legend";legend.textContent=t("legend");row.append(legend);let loaded=false;row.addEventListener("toggle",()=>{if(row.open&&!loaded){loaded=true;renderReference(im,d,row);}});
@@ -159,7 +160,6 @@ $("profile-form").onsubmit=async e=>{e.preventDefault();try{const p=G.profile({n
 $("logout").onclick=async()=>{await saving;try{await api("logout",{});me=null;accountLabels();await refreshMe();panel("landing");await leaderboard();}catch(e){notice(e.message);}};
 $("delete-account").onclick=async()=>{if(!confirm(t("deleteConfirm")))return;await saving;try{await api("account/delete",{confirm:"DELETE"});me=null;accountLabels();await refreshMe();panel("landing");await leaderboard();notice(t("deleted"));}catch(e){notice(e.message);}};
 $("finding").onchange=e=>{editor.category=e.target.value;editor.setMode("draw");};$("draw-tool").onclick=()=>editor.setMode("draw");$("select-tool").onclick=()=>editor.setMode("select");$("pan-tool").onclick=()=>editor.setMode("pan");$("undo").onclick=()=>editor.undo();$("redo").onclick=()=>editor.redo();$("remove-box").onclick=()=>editor.remove();$("hide-boxes").onclick=()=>editor.toggle();$("fit").onclick=()=>editor.fit();
-$("toggle-ai").onclick=()=>{editor.aiHidden=!editor.aiHidden;editor.paint();gameLabels();};
 $("submit").onclick=()=>{if(!editor.boxes.length)$("confirm-submit").showModal();else submit();};$("skip").onclick=()=>{if(editor.boxes.length){notice(t("hasBoxes"));return;}$("confirm-submit").showModal();};
 $("cancel-empty").onclick=()=>$("confirm-submit").close();$("confirm-empty").onclick=()=>{$("confirm-submit").close();submit();};
 $("exit-game").onclick=async()=>{await saving;if(dirty){notice(t("unsaved"));return;}stopReadingTimer();panel("landing");await loadHistory();notice(round?.case_seconds?t('timerContinues'):'');};
